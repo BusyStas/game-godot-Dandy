@@ -16,7 +16,7 @@ Open `project.godot` in Godot 4.7 and press F5, or `godot --path .`. It starts o
 | Tab | Free / capture the mouse |
 | T | Debug: complete a task |
 | Backspace | Abort the run, back to the lobby |
-| X | Quit the game (works on every screen) |
+| X or Ctrl+C | Quit the game (works on every screen, like DOS) |
 
 ## Layout
 - `scenes/` - `title.tscn` (main scene), `lobby.tscn`

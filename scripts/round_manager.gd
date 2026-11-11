@@ -50,8 +50,13 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	## Global shortcut: X quits the game from any screen.
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_X:
+	## Global shortcuts: X, or Ctrl+C like in DOS, quits the game from any screen.
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var ctrl_c: bool = event.keycode == KEY_C and event.ctrl_pressed
+	if event.keycode == KEY_X or ctrl_c:
+		if ctrl_c:
+			print("^C")
 		_save()
 		get_tree().quit()
 
