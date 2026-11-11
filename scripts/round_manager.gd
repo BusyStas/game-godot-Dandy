@@ -21,9 +21,13 @@ var tasks_total := 0
 var tasks_done := 0
 
 var _timer: SceneTreeTimer
+var _run_id := 0  # bumps on start/reset so stale timers are ignored
 
 
 func start_run() -> void:
+	if state != State.LOBBY:
+		return
+	_run_id += 1
 	floor_number = 1
 	_set_state(State.COUNTDOWN)
 	_after(COUNTDOWN_SECONDS, func(): _set_state(State.SELECTION))
@@ -59,7 +63,12 @@ func _end_floor() -> void:
 	# TODO: kill players not in their elevator, then show results.
 	_set_state(State.RESULTS)
 	floor_number += 1
-	_after(5.0, func(): _set_state(State.PRE_FLOOR_ELEVATOR); _after(PRE_FLOOR_SECONDS, _begin_floor))
+	_after(5.0, _next_floor)
+
+
+func _next_floor() -> void:
+	_set_state(State.PRE_FLOOR_ELEVATOR)
+	_after(PRE_FLOOR_SECONDS, _begin_floor)
 
 
 func _set_state(s: State) -> void:
@@ -67,6 +76,18 @@ func _set_state(s: State) -> void:
 	state_changed.emit(s)
 
 
+func reset() -> void:
+	## Abort the current run and go back to the lobby state.
+	_run_id += 1
+	current_map = ""
+	tasks_done = 0
+	tasks_total = 0
+	_set_state(State.LOBBY)
+
+
 func _after(seconds: float, callback: Callable) -> void:
+	var id := _run_id
 	_timer = get_tree().create_timer(seconds)
-	_timer.timeout.connect(callback)
+	_timer.timeout.connect(func():
+		if id == _run_id:
+			callback.call())
