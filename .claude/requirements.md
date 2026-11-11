@@ -1,3 +1,8 @@
+
+# get latest here: https://docs.google.com/presentation/d/1SN0quesu7F6EFkFNrn4G97AoUU_rhAo0Q65-qJgfKSs/edit?slide=id.h6abf26ebc7158a13_1_79#slide=id.h6abf26ebc7158a13_1_79
+# when he changes this presentation - update this file. 
+
+
 # Requirements — Soria's Expeditions
 
 Source: Google Slides "Soria's Expedition - Game Design: Whole Guide" (owner: Daniel Prikhodko; read 2026-11-11), which supersedes `Game Design - The Whole Guide.pdf` in this folder. The PDF is an older snapshot without the Game Basics, Characters or Corruptions sections.
