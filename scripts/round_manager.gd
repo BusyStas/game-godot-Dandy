@@ -116,6 +116,7 @@ func _next_floor() -> void:
 
 func _set_state(s: State) -> void:
 	state = s
+	print("[RoundManager] state -> %s (floor %d)" % [State.keys()[s], floor_number])
 	state_changed.emit(s)
 
 
