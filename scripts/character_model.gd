@@ -19,10 +19,50 @@ static var _tex_cache := {}
 static func build(kind: String) -> Node3D:
 	var root := Node3D.new()
 	var fatal := kind != "rencha"
+	_body(root, fatal)
+	_head(root, kind)
+	return root
+
+
+## A plain figure for the player (used for the elevator mirror reflection): the same suit with a skin-coloured head.
+static func build_player(skin: Color) -> Node3D:
+	var root := Node3D.new()
+	_body(root, true)
+	var head := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.2
+	sm.height = 0.4
+	head.mesh = sm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = skin
+	head.material_override = mat
+	head.position = Vector3(0, 1.68, 0)
+	root.add_child(head)
+	for sx in [-1.0, 1.0]:
+		var eye := MeshInstance3D.new()
+		var em := SphereMesh.new()
+		em.radius = 0.035
+		em.height = 0.07
+		eye.mesh = em
+		var emat := StandardMaterial3D.new()
+		emat.albedo_color = Color.BLACK
+		eye.material_override = emat
+		eye.position = Vector3(sx * 0.08, 1.71, -0.17)
+		root.add_child(eye)
+	return root
+
+
+static func set_visual_layers(node: Node, layers: int) -> void:
+	if node is VisualInstance3D:
+		(node as VisualInstance3D).layers = layers
+	for c in node.get_children():
+		set_visual_layers(c, layers)
+
+
+static func _body(root: Node3D, fatal: bool) -> void:
 	var suit := Color(0, 0, 0) if fatal else Color(0.27, 0.27, 0.27)
 	var pants := Color(0.35, 0.35, 0.35) if fatal else Color(0.62, 0.78, 0.92)
 	var cuff := Color(0.12, 0.3, 0.75) if fatal else Color(0.7, 0.7, 0.7)
-
 	for sx in [-1.0, 1.0]:
 		_box(root, Vector3(sx * 0.13, 0.4, 0), Vector3(0.22, 0.8, 0.24), pants)
 	_box(root, Vector3(0, 1.12, 0), Vector3(0.46, 0.66, 0.28), suit)
@@ -34,8 +74,6 @@ static func build(kind: String) -> Node3D:
 		_arm(root, sx, suit, cuff, fatal, (not fatal) and sx > 0.0)
 	if not fatal:
 		_box(root, Vector3(0, 1.5, 0), Vector3(0.1, 0.14, 0.1), Color(0.6, 0.6, 0.6))
-	_head(root, kind)
-	return root
 
 
 static func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> void:

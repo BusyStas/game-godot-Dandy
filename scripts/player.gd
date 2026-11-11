@@ -34,6 +34,7 @@ func _ready() -> void:
 	_cam.position.y = 1.6
 	add_child(_cam)
 	_cam.current = true
+	_cam.cull_mask = 0xFFFFF & ~2   # layer 2 holds the mirror-only reflection figure
 
 	_lamp = OmniLight3D.new()
 	_lamp.omni_range = 14.0
@@ -43,6 +44,10 @@ func _ready() -> void:
 
 	apply_loadout()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func camera() -> Camera3D:
+	return _cam
 
 
 func apply_loadout() -> void:

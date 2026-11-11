@@ -21,6 +21,7 @@ var _msg: Label
 var _msg_until_ms := 0
 var _floor_root: Node3D
 var _floor_elevator: Area3D
+var _mirror: Node3D
 var _selection: CanvasLayer
 var _shop: CanvasLayer
 var _shops: Array = []   # [{pos: Vector3, category: String, name: String}]
@@ -35,7 +36,9 @@ func _ready() -> void:
 	_add_floor_and_walls()
 	_add_elevators()
 	_add_shops()
-	add_child(FloorBuilder.build_cabin(CABIN_ORIGIN))
+	var cabin := FloorBuilder.build_cabin(CABIN_ORIGIN)
+	add_child(cabin)
+	_mirror = cabin.get_node("Mirror")
 	_add_player()
 	_add_ui()
 	RoundManager.state_changed.connect(_on_state_changed)
@@ -93,6 +96,7 @@ func _open_shop(index: int) -> void:
 # --- run flow ------------------------------------------------------------------
 
 func _on_state_changed(s: int) -> void:
+	_update_mirror(s)
 	if s == RoundManager.State.LOBBY:
 		_selection.close(false)
 		_clear_floor()
@@ -113,6 +117,18 @@ func _on_state_changed(s: int) -> void:
 	elif s == RoundManager.State.PANIC:
 		_set_panic(true)
 	_sync_ui_lock()
+
+
+func _update_mirror(s: int) -> void:
+	if _mirror == null:
+		return
+	var in_cabin: bool = s == RoundManager.State.COUNTDOWN or s == RoundManager.State.SELECTION \
+		or s == RoundManager.State.PRE_FLOOR_ELEVATOR
+	if in_cabin:
+		var skin: String = str(RoundManager.loadout.get("skin", ""))
+		if GameData.SKINS.has(skin):
+			_mirror.skin_color = GameData.SKINS[skin]["color"]
+	_mirror.active = in_cabin
 
 
 func _on_floor_started(map_name: String, _floor_number: int) -> void:
@@ -191,8 +207,8 @@ func _add_floor_and_walls() -> void:
 func _add_elevators() -> void:
 	for i in 4:
 		var x := -9.0 + i * 6.0
-		FloorBuilder.box(self, Vector3(x, 1.5, -14.2), Vector3(3.5, 3, 0.4), Color(0.7, 0.7, 0.2), false)
-		FloorBuilder.label(self, "Elevator %d" % (i + 1), Vector3(x, 3.6, -13.8))
+		FloorBuilder.build_elevator_doors(self, Vector3(x, 0, -14.45), 3.2, 3.0, true)
+		FloorBuilder.label(self, "Elevator %d" % (i + 1), Vector3(x, 4.6, -14.3))
 		var trigger := Area3D.new()
 		trigger.position = Vector3(x, 1.5, -12.5)
 		var cs := CollisionShape3D.new()
