@@ -10,6 +10,7 @@ var _pitch := 0.0
 
 
 func _ready() -> void:
+	add_to_group("player")
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.4
