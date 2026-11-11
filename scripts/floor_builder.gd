@@ -140,6 +140,9 @@ static func _pick_machine_kind(rng: RandomNumberGenerator, f: int) -> String:
 
 static func _pick_corruption_kind(rng: RandomNumberGenerator, f: int) -> String:
 	var pool := ["serrani", "serrani", "serrani", "surrena", "surrena"]
+	if f >= 4:
+		pool.append("rencha")
+		pool.append("rencha")
 	if f >= 8:
 		pool.append("soria")
 		pool.append("soria")

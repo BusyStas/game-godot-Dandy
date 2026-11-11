@@ -93,7 +93,7 @@ func _physics_process(delta: float) -> void:
 		if Input.is_physical_key_pressed(KEY_W): z -= 1.0
 		sprint = Input.is_physical_key_pressed(KEY_SHIFT)
 	var dir := (transform.basis * Vector3(x, 0.0, z)).normalized()
-	var speed := BASE_SPEED * _speed_mult * (SPRINT_MULT if sprint else 1.0)
+	var speed := BASE_SPEED * _speed_mult * RoundManager.slow_factor * (SPRINT_MULT if sprint else 1.0)
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 	if not is_on_floor():

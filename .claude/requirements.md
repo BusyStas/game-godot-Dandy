@@ -182,3 +182,21 @@ Decisions made where the deck was silent. Change any of these by editing `script
 - **Multiplayer.** Every system is server-authoritative in design but currently runs single-player. It needs decisions (host vs dedicated server, player count, lobby/elevator grouping) and is the largest remaining task. "Healthiest player" targeting for Soria, shared Sonium split on machines and the shared progress bar across players all depend on it.
 - Real art, models, animation, sound and music; hand-built maps to replace the procedural ones.
 - Per-map task mixes and Corruption rosters beyond the rules above (the deck's Corruptions section is empty).
+
+---
+
+## 12. Deck update: character art and the "Stalk" enemy class (2026-11-11)
+
+The deck now includes drawings. The in-game models follow them (`scripts/character_model.gd`):
+- **Common body (Fatal three):** black suit, two white chest stripes, white belt, grey legs, black arms with a white stripe and blue gradient-cuffed gloves.
+- **Soria:** wide white head, syringe needle on one side, seven rainbow tabs on top, two big ringed eyes, small black mouth.
+- **Serrani:** TV head with a black-to-white frame and blue rim, black screen, two antennas, wide smile.
+- **Surrena:** spiky flame head (red at the top, yellow at the bottom), big eyes, wide black mouth.
+- **Rencha:** wrench head (ring on one end, open jaw on the other), dark-grey torso, light-blue trousers, one arm raised.
+- **Machines** are black cabinets with three lights on top (red broken, green fixed); **storage containers** are grey chests with a yellow lock ring. Faces are painted into textures at runtime, so no art files are needed; swap in real art later.
+
+**New requirements from the updated deck**
+- **R-6.8 Stalk class.** A second kind of Corruption that does *not* kill instantly:
+  - **Rencha** (implemented): mutated from fear of failure; stalks the halls. Once it has seen you, you are slowed for the whole floor (placeholder: 0.8x speed). In-game it follows at about 5-7 m and never attacks. Appears from floor 4.
+  - **Cybot 1.2.7** (not implemented, deck art is only a placeholder): a cyborg who was Rencha's friend and was forgotten. It can **break machines**, which spill their Sonium and make filling them harder.
+- Surrena's text now says she "lies inside the walls" and jumps out on characters who are alone. This matches the existing implementation.

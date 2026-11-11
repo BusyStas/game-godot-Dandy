@@ -21,7 +21,7 @@ var progress := 0.0
 var done := false
 
 var _goal := 3.0
-var _mat: StandardMaterial3D
+var _light_mat: StandardMaterial3D
 var _label: Label3D
 
 
@@ -33,10 +33,34 @@ func _ready() -> void:
 	var bm := BoxMesh.new()
 	bm.size = Vector3(1.2, 1.4, 1.2)
 	mesh.mesh = bm
-	_mat = StandardMaterial3D.new()
-	_mat.albedo_color = KINDS[kind]["color"]
-	mesh.material_override = _mat
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.05, 0.05, 0.07)   # black cabinet, as drawn in the deck
+	mesh.material_override = mat
 	body.add_child(mesh)
+	# colored strip at the bottom shows the machine kind
+	var strip := MeshInstance3D.new()
+	var strip_mesh := BoxMesh.new()
+	strip_mesh.size = Vector3(1.0, 0.14, 0.02)
+	strip.mesh = strip_mesh
+	var strip_mat := StandardMaterial3D.new()
+	strip_mat.albedo_color = KINDS[kind]["color"]
+	strip.material_override = strip_mat
+	strip.position = Vector3(0, -0.55, -0.61)
+	body.add_child(strip)
+	# three lights on top: red while broken, green once fixed
+	_light_mat = StandardMaterial3D.new()
+	_light_mat.albedo_color = Color(0.9, 0.1, 0.1)
+	_light_mat.emission_enabled = true
+	_light_mat.emission = Color(0.9, 0.1, 0.1)
+	for lx in [-0.3, 0.0, 0.3]:
+		var light := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.09
+		sm.height = 0.18
+		light.mesh = sm
+		light.material_override = _light_mat
+		light.position = Vector3(lx, 0.78, 0)
+		body.add_child(light)
 	var cs := CollisionShape3D.new()
 	var bs := BoxShape3D.new()
 	bs.size = bm.size
@@ -97,7 +121,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _finish() -> void:
 	done = true
-	_mat.albedo_color = Color(0.2, 0.7, 0.3)
+	_light_mat.albedo_color = Color(0.1, 0.9, 0.2)
+	_light_mat.emission = Color(0.1, 0.9, 0.2)
 	RoundManager.machine_fixed()
 	_update_label()
 

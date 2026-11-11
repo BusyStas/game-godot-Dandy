@@ -285,6 +285,8 @@ func _refresh_hud() -> void:
 			lines.append("Beware the Corruptions. Sprinting and repairing are loud.")
 		RoundManager.State.PANIC, RoundManager.State.RETURN_TO_ELEVATOR:
 			lines.append("RUN BACK TO THE ELEVATOR! %d s left" % ceili(RoundManager.time_left()))
+	if RoundManager.slow_factor < 1.0:
+		lines.append("Slowed by Rencha for this floor")
 	lines.append("Backspace: return to lobby")
 	_hud.text = "\n".join(lines)
 

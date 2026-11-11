@@ -3,6 +3,7 @@ extends CharacterBody3D
 ##   soria   - hunts the player relentlessly (and faster once panic mode starts). Late floors only.
 ##   serrani - wanders until he hears noise (sprinting, repairing), then runs to where it came from.
 ##   surrena - hides inside the walls, then bursts out when the player is close.
+##   rencha  - a "Stalk" enemy: follows at a distance, never kills, but once it sees you the whole floor slows you.
 ## "Healthiest player" targeting for Soria needs multiplayer; solo, the player is always the target.
 
 const KILL_RANGE := 1.3
@@ -32,27 +33,9 @@ func _ready() -> void:
 	shape.position.y = 0.9
 	add_child(shape)
 
-	var colors := {"soria": Color(0.2, 0.65, 0.85), "serrani": Color(0.55, 0.3, 0.7), "surrena": Color(0.85, 0.2, 0.4)}
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = colors.get(kind, Color(0.5, 0.5, 0.5))
 	_visual = Node3D.new()
 	add_child(_visual)
-	var body := MeshInstance3D.new()
-	var cm := CapsuleMesh.new()
-	cm.radius = 0.4
-	cm.height = 1.5
-	body.mesh = cm
-	body.position.y = 0.75
-	body.material_override = mat
-	_visual.add_child(body)
-	var head := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.3
-	sm.height = 0.6
-	head.mesh = sm
-	head.position.y = 1.75
-	head.material_override = mat
-	_visual.add_child(head)
+	_visual.add_child(CharacterModel.build(kind))
 	_label = Label3D.new()
 	_label.text = kind.capitalize()
 	_label.position.y = 2.5
@@ -83,6 +66,8 @@ func _physics_process(delta: float) -> void:
 		_sight_timer = 0.25
 		if dist < SIGHT_RANGE and _has_los():
 			RoundManager.corruption_spotted(get_instance_id())
+			if kind == "rencha":
+				RoundManager.apply_slow()
 
 	var panic := RoundManager.state == RoundManager.State.PANIC or RoundManager.state == RoundManager.State.RETURN_TO_ELEVATOR
 	var target := global_position
@@ -101,6 +86,13 @@ func _physics_process(delta: float) -> void:
 			else:
 				target = _wander_target()
 				speed = 1.8
+		"rencha":
+			if dist > 7.5:
+				target = _player.global_position
+				speed = 3.5
+			elif dist < 5.0:
+				target = global_position - to_p.normalized() * 3.0
+				speed = 2.5
 		"surrena":
 			if not _revealed:
 				if dist < 7.0 and _has_los():
@@ -112,7 +104,7 @@ func _physics_process(delta: float) -> void:
 				speed = 9.0 if _now() < _dash_until else 3.0
 
 	_move_toward(target, speed, delta)
-	if _revealed and dist < KILL_RANGE:
+	if _revealed and kind != "rencha" and dist < KILL_RANGE:
 		RoundManager.kill_player("Caught by %s" % kind.capitalize())
 
 

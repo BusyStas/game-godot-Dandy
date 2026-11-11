@@ -20,9 +20,22 @@ func _ready() -> void:
 	bm.size = Vector3(1.0, 0.8, 1.0)
 	mesh.mesh = bm
 	_mat = StandardMaterial3D.new()
-	_mat.albedo_color = Color(0.45, 0.3, 0.15)
+	_mat.albedo_color = Color(0.35, 0.35, 0.38)   # grey chest, as in the deck
 	mesh.material_override = _mat
 	body.add_child(mesh)
+	# yellow lock ring on the front
+	var lock := MeshInstance3D.new()
+	var lm := CylinderMesh.new()
+	lm.top_radius = 0.1
+	lm.bottom_radius = 0.1
+	lm.height = 0.03
+	lock.mesh = lm
+	var lock_mat := StandardMaterial3D.new()
+	lock_mat.albedo_color = Color(1.0, 0.85, 0.0)
+	lock.material_override = lock_mat
+	lock.rotation_degrees.x = 90.0
+	lock.position = Vector3(0, 0.1, -0.51)
+	body.add_child(lock)
 	var cs := CollisionShape3D.new()
 	var bs := BoxShape3D.new()
 	bs.size = bm.size
@@ -58,7 +71,7 @@ func _process(delta: float) -> void:
 
 func _open() -> void:
 	opened = true
-	_mat.albedo_color = Color(0.3, 0.6, 0.3)
+	_mat.albedo_color = Color(0.5, 0.6, 0.5)
 	_label.visible = true
 	_label.text = "Opened"
 	RoundManager.container_opened()

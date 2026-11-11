@@ -32,6 +32,7 @@ var tasks_done := 0
 var machine_count := 3
 var container_count := 2
 var corruption_count := 1
+var slow_factor := 1.0   ## <1 once Rencha has seen the player on this floor
 
 var sonium := 0
 var best_floor := 0
@@ -73,6 +74,7 @@ func reset() -> void:
 	tasks_done = 0
 	tasks_total = 0
 	_spotted.clear()
+	slow_factor = 1.0
 	_set_state(State.LOBBY)
 
 
@@ -120,6 +122,14 @@ func corruption_spotted(id: int) -> void:
 	add_sonium(randi_range(1, 2))
 	if task_kind == "spotted":
 		report_task_done()
+
+
+func apply_slow() -> void:
+	## Rencha's ability: once it has seen you, you are slowed for the rest of the floor.
+	if slow_factor < 1.0:
+		return
+	slow_factor = 0.8
+	notice.emit("Rencha is stalking you - you feel slower.")
 
 
 func spotted_count() -> int:
@@ -198,6 +208,7 @@ func _begin_floor() -> void:
 			tasks_total = machine_count
 	tasks_done = 0
 	_spotted.clear()
+	slow_factor = 1.0
 	_set_state(State.FLOOR)
 	floor_started.emit(current_map, floor_number)
 	if GameData.LORE.has(current_map):
