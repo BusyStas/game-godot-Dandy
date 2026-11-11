@@ -1,0 +1,12 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="game-godot-dandy"
+run/main_scene="res://scenes/lobby.tscn"
+config/features=PackedStringArray("4.3")
+
+[autoload]
+
+RoundManager="*res://scripts/round_manager.gd"
