@@ -1,40 +1,54 @@
 extends Node
-## Round loop state machine (autoload). Mirrors the design deck:
-## lobby -> elevator countdown -> selection -> pre-floor elevator (~15s)
-## -> floor (tasks) -> panic mode -> return to elevator (90s) -> results -> next floor.
+## Round loop + persistent player state (autoload).
+## lobby -> elevator countdown -> selection -> pre-floor elevator (~15s) -> floor (tasks)
+## -> panic mode -> return to elevator (90s) -> results -> next floor.
 ## Authority (rewards, task progress, deaths) should live on the server once networking exists.
 
 signal state_changed(new_state: State)
 signal floor_started(map_name: String, floor_number: int)
-signal floor_ended          ## emitted when the return timer runs out; listeners may call reset() to kill the run
+signal floor_ended          ## return timer ran out; listeners may kill the run
 signal sonium_changed(total: int)
+signal player_died(reason: String)
+signal notice(text: String)
 
 enum State { LOBBY, COUNTDOWN, SELECTION, PRE_FLOOR_ELEVATOR, FLOOR, PANIC, RETURN_TO_ELEVATOR, RESULTS }
 
-const COUNTDOWN_SECONDS := 5.0       # placeholder, not specified in the deck
-const SELECTION_SECONDS := 30.0      # placeholder, not specified in the deck
+const COUNTDOWN_SECONDS := 5.0       # PLACEHOLDER, not in the deck
+const SELECTION_SECONDS := 30.0      # PLACEHOLDER, not in the deck
 const PRE_FLOOR_SECONDS := 15.0
 const RETURN_SECONDS := 90.0
 const RESULTS_SECONDS := 5.0
-const TASKS_PER_FLOOR := 3           # placeholder until per-map task setup exists
+const MACHINE_REWARD := 10
+const CONTAINER_REWARD := 5
+const CHALLENGE_BONUS := 100         # PLACEHOLDER: reward for beating a shop-character challenge floor
 const SAVE_PATH := "user://save.cfg"
 
 var state: State = State.LOBBY
 var floor_number := 1
 var current_map := ""
+var task_kind := "machines"
 var tasks_total := 0
 var tasks_done := 0
+var machine_count := 3
+var container_count := 2
+var corruption_count := 1
+
 var sonium := 0
+var best_floor := 0
+var starter_chosen := false
+var owned := {"characters": [], "skins": ["default"], "decorations": ["none"]}
+var loadout := {"character": "recruit", "skin": "default", "utility": "none", "decoration": "none"}
 
 var _timer: SceneTreeTimer
-var _run_id := 0  # bumps on start/reset so stale timers are ignored
+var _run_id := 0
+var _spotted := {}
 
 
 func _ready() -> void:
 	_load()
 
 
-# --- public API ----------------------------------------------------------------
+# --- run flow -------------------------------------------------------------------
 
 func start_run() -> void:
 	if state != State.LOBBY:
@@ -46,27 +60,20 @@ func start_run() -> void:
 
 
 func finish_selection() -> void:
-	## Call when all players are ready (or the selection timer ends).
 	if state != State.SELECTION:
 		return
 	_set_state(State.PRE_FLOOR_ELEVATOR)
 	_after(PRE_FLOOR_SECONDS, _begin_floor)
 
 
-func report_task_done() -> void:
-	if state != State.FLOOR:
-		return
-	tasks_done += 1
-	if tasks_done >= tasks_total:
-		_set_state(State.PANIC)
-		_set_state(State.RETURN_TO_ELEVATOR)
-		_after(RETURN_SECONDS, _end_floor)
-
-
-func add_sonium(amount: int) -> void:
-	sonium += amount
-	sonium_changed.emit(sonium)
-	_save()
+func reset() -> void:
+	_run_id += 1
+	_timer = null
+	current_map = ""
+	tasks_done = 0
+	tasks_total = 0
+	_spotted.clear()
+	_set_state(State.LOBBY)
 
 
 func time_left() -> float:
@@ -75,17 +82,96 @@ func time_left() -> float:
 	return maxf(_timer.time_left, 0.0)
 
 
-func reset() -> void:
-	## Abort the current run and go back to the lobby state.
-	_run_id += 1
-	_timer = null
-	current_map = ""
-	tasks_done = 0
-	tasks_total = 0
-	_set_state(State.LOBBY)
+func in_floor() -> bool:
+	return state == State.FLOOR or state == State.PANIC or state == State.RETURN_TO_ELEVATOR
 
 
-# --- internals -----------------------------------------------------------------
+func report_task_done() -> void:
+	if state != State.FLOOR:
+		return
+	tasks_done += 1
+	if tasks_done >= tasks_total:
+		if current_map.begins_with("CL"):
+			add_sonium(CHALLENGE_BONUS)
+			notice.emit("Challenge beaten! +%d Sonium" % CHALLENGE_BONUS)
+		_set_state(State.PANIC)
+		_set_state(State.RETURN_TO_ELEVATOR)
+		_after(RETURN_SECONDS, _end_floor)
+
+
+# --- gameplay events ------------------------------------------------------------
+
+func machine_fixed() -> void:
+	add_sonium(MACHINE_REWARD)
+	if task_kind == "machines":
+		report_task_done()
+
+
+func container_opened() -> void:
+	add_sonium(CONTAINER_REWARD)
+	if task_kind == "containers":
+		report_task_done()
+
+
+func corruption_spotted(id: int) -> void:
+	if not in_floor() or _spotted.has(id):
+		return
+	_spotted[id] = true
+	add_sonium(randi_range(1, 2))
+	if task_kind == "spotted":
+		report_task_done()
+
+
+func spotted_count() -> int:
+	return _spotted.size()
+
+
+func kill_player(reason: String) -> void:
+	if not in_floor():
+		return
+	if floor_number > best_floor:
+		best_floor = floor_number
+		_save()
+	player_died.emit("%s (floor %d, best %d)" % [reason, floor_number, best_floor])
+	reset()
+
+
+func add_sonium(amount: int) -> void:
+	sonium += amount
+	sonium_changed.emit(sonium)
+	_save()
+
+
+# --- shop / loadout -------------------------------------------------------------
+
+func choose_starter(id: String) -> void:
+	starter_chosen = true
+	if not owned["characters"].has(id):
+		owned["characters"].append(id)
+	loadout["character"] = id
+	_save()
+
+
+func buy(category: String, id: String) -> bool:
+	var items: Dictionary = GameData.items(category)
+	if not items.has(id) or owned[category].has(id):
+		return false
+	var price: int = items[id]["price"]
+	if sonium < price:
+		return false
+	sonium -= price
+	owned[category].append(id)
+	sonium_changed.emit(sonium)
+	_save()
+	return true
+
+
+func set_loadout(key: String, id: String) -> void:
+	loadout[key] = id
+	_save()
+
+
+# --- internals ------------------------------------------------------------------
 
 func _enter_selection() -> void:
 	_set_state(State.SELECTION)
@@ -94,16 +180,37 @@ func _enter_selection() -> void:
 
 func _begin_floor() -> void:
 	current_map = MapPicker.pick(floor_number)
+	var th: Dictionary = GameData.theme(current_map)
+	task_kind = th["task"]
+	machine_count = clampi(3 + floori(floor_number / 8.0), 3, 6)
+	container_count = 5 if task_kind == "containers" else 2
+	corruption_count = clampi(1 + floori(floor_number / 6.0), 1, 4)
+	if task_kind == "spotted":
+		corruption_count = maxi(corruption_count, 2)
+	if current_map.begins_with("CL"):
+		corruption_count += 1
+	match task_kind:
+		"containers":
+			tasks_total = container_count
+		"spotted":
+			tasks_total = corruption_count
+		_:
+			tasks_total = machine_count
 	tasks_done = 0
-	tasks_total = TASKS_PER_FLOOR
+	_spotted.clear()
 	_set_state(State.FLOOR)
 	floor_started.emit(current_map, floor_number)
+	if GameData.LORE.has(current_map):
+		notice.emit(GameData.LORE[current_map])
 
 
 func _end_floor() -> void:
 	floor_ended.emit()
 	if state != State.RETURN_TO_ELEVATOR:
-		return  # a listener ended the run (player died)
+		return
+	if floor_number > best_floor:
+		best_floor = floor_number
+		_save()
 	_set_state(State.RESULTS)
 	floor_number += 1
 	_after(RESULTS_SECONDS, _next_floor)
@@ -131,10 +238,25 @@ func _after(seconds: float, callback: Callable) -> void:
 func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("player", "sonium", sonium)
+	cfg.set_value("player", "best_floor", best_floor)
+	cfg.set_value("player", "starter_chosen", starter_chosen)
+	cfg.set_value("player", "owned_characters", owned["characters"])
+	cfg.set_value("player", "owned_skins", owned["skins"])
+	cfg.set_value("player", "owned_decorations", owned["decorations"])
+	for k in loadout:
+		cfg.set_value("loadout", k, loadout[k])
 	cfg.save(SAVE_PATH)
 
 
 func _load() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) == OK:
-		sonium = int(cfg.get_value("player", "sonium", 0))
+	if cfg.load(SAVE_PATH) != OK:
+		return
+	sonium = int(cfg.get_value("player", "sonium", 0))
+	best_floor = int(cfg.get_value("player", "best_floor", 0))
+	starter_chosen = bool(cfg.get_value("player", "starter_chosen", false))
+	owned["characters"] = Array(cfg.get_value("player", "owned_characters", []))
+	owned["skins"] = Array(cfg.get_value("player", "owned_skins", ["default"]))
+	owned["decorations"] = Array(cfg.get_value("player", "owned_decorations", ["none"]))
+	for k in loadout:
+		loadout[k] = str(cfg.get_value("loadout", k, loadout[k]))

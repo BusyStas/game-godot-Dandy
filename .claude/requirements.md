@@ -153,3 +153,32 @@ Three antagonists, all labeled "Fatal", appear in the design. All can **kill a c
 8. What is the meaning of "machine types … are sorted"?
 9. How many machines/containers per floor, and how are Corruption counts scaled by player count?
 10. Does the Sonium reward for a shared machine split proportionally?
+
+---
+
+## 11. Implementation status and design decisions (single-player build)
+
+Decisions made where the deck was silent. Change any of these by editing `scripts/game_data.gd` or `scripts/round_manager.gd`.
+
+**Implemented and tested headless (Godot 4.7.2)**
+- R-2: lobby with 4 elevators and 3 shops; title screen with the two-starter choice on first launch (R-2.1); the logo's "i" is a sideways head (R-1.3).
+- R-3: full round loop (countdown, selection, 15 s elevator, floor, panic, 90 s return, death if not back, next floor).
+- R-4: all 24 maps with min-floor gating and weighted odds; each has its own palette, prop layout and task type (procedural placeholder geometry).
+- R-5: three task types, **machines**, **containers** (hidden, hold E) and **spotted** (be seen by every Corruption). All five machine kinds exist (regular, hard, treadmill, clicker, search). Machines and containers spawn on every floor and pay Sonium even when not the task.
+- R-6: Soria, Serrani and Surrena behave as described; they kill instantly. Spotting = line of sight within 14 m.
+- R-7: Sonium for machines (10), containers (5) and being spotted (1-2); shops spend it; ownership and loadout are saved.
+- R-8: selection screen, shop windows, HUD, shared task progress readout.
+
+**Placeholders chosen (not in the deck)**
+- Starting characters: Recruit (balanced) and Scout (+15% speed). Shop also sells Engineer (100, fixes 30% faster) and Ghost (250, half the noise). The unchosen starter costs 60.
+- Utilities (all free): Sprint Boots, Lantern, Earplugs. Skins and card decorations are cosmetic with invented prices.
+- Timers: 5 s elevator countdown, 30 s selection, 5 s results.
+- Task counts: machines 3 (+1 per 8 floors, max 6); containers 5; Corruptions 1 (+1 per 6 floors, max 4; spotted floors at least 2; challenge floors +1). Soria only appears from floor 8.
+- Challenge floors (CL1-CL3) give +100 Sonium on completion. Lore floors (LR1-LR2) show a short invented note.
+- Pre-floor-30 odds: the floor-30 table is used at every floor (deck says some maps are higher earlier; not specified which).
+- Corruption AI is simple direct steering (no navmesh); props are kept sparse so they rarely get stuck.
+
+**Not done**
+- **Multiplayer.** Every system is server-authoritative in design but currently runs single-player. It needs decisions (host vs dedicated server, player count, lobby/elevator grouping) and is the largest remaining task. "Healthiest player" targeting for Soria, shared Sonium split on machines and the shared progress bar across players all depend on it.
+- Real art, models, animation, sound and music; hand-built maps to replace the procedural ones.
+- Per-map task mixes and Corruption rosters beyond the rules above (the deck's Corruptions section is empty).

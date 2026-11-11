@@ -1,15 +1,18 @@
 extends Node3D
-## Lobby + run presentation. Builds the lobby, an elevator cabin, and (per run) a floor.
-## Walk into an elevator to start a run. Debug keys:
-##   Enter     - ready up during the selection screen
-##   T         - complete one task while on a floor
-##   Backspace - abort the run and return to the lobby
+## Lobby + run presentation: lobby, elevator cabin, per-run floor, shops, selection screen, HUD.
+## Walk into an elevator to start a run. Keys:
+##   WASD/mouse move+look, Shift sprint, E interact, F open a shop when standing near it
+##   Enter confirms the selection screen; T completes a task (debug); Backspace aborts the run
 
 const PlayerScript := preload("res://scripts/player.gd")
+const SelectionScript := preload("res://scripts/selection_screen.gd")
+const ShopScript := preload("res://scripts/shop_ui.gd")
 
 const LOBBY_SPAWN := Vector3(0, 0.5, 10)
 const CABIN_ORIGIN := Vector3(100, 0, 0)
 const FLOOR_ORIGIN := Vector3(200, 0, 0)
+const SHOP_RANGE := 5.0
+const TITLE_SCENE := "res://scenes/title.tscn"
 
 var _player: CharacterBody3D
 var _env: Environment
@@ -18,56 +21,108 @@ var _msg: Label
 var _msg_until_ms := 0
 var _floor_root: Node3D
 var _floor_elevator: Area3D
+var _selection: CanvasLayer
+var _shop: CanvasLayer
+var _shops: Array = []   # [{pos: Vector3, category: String, name: String}]
+var _near_shop := -1
 
 
 func _ready() -> void:
+	if not RoundManager.starter_chosen:
+		get_tree().change_scene_to_file.call_deferred(TITLE_SCENE)
+		return
 	_add_environment()
 	_add_floor_and_walls()
 	_add_elevators()
 	_add_shops()
 	add_child(FloorBuilder.build_cabin(CABIN_ORIGIN))
 	_add_player()
-	_add_hud()
+	_add_ui()
 	RoundManager.state_changed.connect(_on_state_changed)
 	RoundManager.floor_started.connect(_on_floor_started)
 	RoundManager.floor_ended.connect(_on_floor_ended)
+	RoundManager.player_died.connect(_on_player_died)
+	RoundManager.notice.connect(func(t): _show_message(t, 6000))
 
 
 func _process(_delta: float) -> void:
+	if _hud == null:
+		return
+	_near_shop = -1
+	if RoundManager.state == RoundManager.State.LOBBY and not _ui_open():
+		for i in _shops.size():
+			var p: Vector3 = _shops[i]["pos"]
+			if Vector2(_player.global_position.x - p.x, _player.global_position.z - p.z).length() < SHOP_RANGE:
+				_near_shop = i
 	_refresh_hud()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed):
+	if _hud == null or not (event is InputEventKey and event.pressed):
 		return
 	match event.keycode:
 		KEY_ENTER:
-			RoundManager.finish_selection()
+			if _selection.is_open():
+				_selection.confirm()
+		KEY_F:
+			if _near_shop >= 0 and not _ui_open():
+				_open_shop(_near_shop)
 		KEY_T:
 			RoundManager.report_task_done()
 		KEY_BACKSPACE:
 			RoundManager.reset()
 
 
+# --- UI state ------------------------------------------------------------------
+
+func _ui_open() -> bool:
+	return _selection.is_open() or _shop.is_open()
+
+
+func _sync_ui_lock() -> void:
+	var open := _ui_open()
+	_player.set("frozen", open)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
+
+
+func _open_shop(index: int) -> void:
+	_shop.open(_shops[index]["category"])
+	_sync_ui_lock()
+
+
 # --- run flow ------------------------------------------------------------------
 
 func _on_state_changed(s: int) -> void:
-	match s:
-		RoundManager.State.LOBBY:
-			_clear_floor()
-			_set_panic(false)
-			_teleport(LOBBY_SPAWN)
-		RoundManager.State.COUNTDOWN, RoundManager.State.PRE_FLOOR_ELEVATOR:
-			_clear_floor()
-			_set_panic(false)
-			_teleport(CABIN_ORIGIN + Vector3(0, 0.5, 0))
-		RoundManager.State.PANIC:
-			_set_panic(true)
+	if s == RoundManager.State.LOBBY:
+		_selection.close(false)
+		_clear_floor()
+		_set_panic(false)
+		_teleport(LOBBY_SPAWN)
+	elif s == RoundManager.State.COUNTDOWN:
+		_clear_floor()
+		_set_panic(false)
+		_teleport(CABIN_ORIGIN + Vector3(0, 0.5, 0))
+	elif s == RoundManager.State.SELECTION:
+		_selection.open()
+	elif s == RoundManager.State.PRE_FLOOR_ELEVATOR:
+		_selection.close(true)   # auto-confirm if the timer ran out
+		_player.call("apply_loadout")
+		_clear_floor()
+		_set_panic(false)
+		_teleport(CABIN_ORIGIN + Vector3(0, 0.5, 0))
+	elif s == RoundManager.State.PANIC:
+		_set_panic(true)
+	_sync_ui_lock()
 
 
 func _on_floor_started(map_name: String, _floor_number: int) -> void:
 	_clear_floor()
-	var built := FloorBuilder.build_floor(map_name, RoundManager.tasks_total, FLOOR_ORIGIN)
+	var built := FloorBuilder.build_floor(map_name, FLOOR_ORIGIN, {
+		"floor": RoundManager.floor_number,
+		"machines": RoundManager.machine_count,
+		"containers": RoundManager.container_count,
+		"corruptions": RoundManager.corruption_count,
+	})
 	_floor_root = built["root"]
 	_floor_elevator = built["elevator"]
 	add_child(_floor_root)
@@ -76,10 +131,13 @@ func _on_floor_started(map_name: String, _floor_number: int) -> void:
 
 func _on_floor_ended() -> void:
 	if _floor_elevator and not _floor_elevator.overlaps_body(_player):
-		_show_message("You didn't make it back to the elevator. You died.", 5000)
-		RoundManager.reset()
+		RoundManager.kill_player("You didn't make it back to the elevator")
 	else:
 		_show_message("Floor cleared!", 3000)
+
+
+func _on_player_died(reason: String) -> void:
+	_show_message("YOU DIED\n%s" % reason, 7000)
 
 
 func _clear_floor() -> void:
@@ -147,12 +205,15 @@ func _add_elevators() -> void:
 
 
 func _add_shops() -> void:
-	FloorBuilder.box(self, Vector3(-17, 0.75, -2), Vector3(3, 1.5, 6), Color(0.2, 0.5, 0.8))
-	FloorBuilder.label(self, "Shop 1: Characters (Soria)", Vector3(-17, 3, -2), 36)
-	FloorBuilder.box(self, Vector3(17, 0.75, -6), Vector3(3, 1.5, 6), Color(0.2, 0.7, 0.4))
-	FloorBuilder.label(self, "Shop 2: Skins (Serrani)", Vector3(17, 3, -6), 36)
-	FloorBuilder.box(self, Vector3(17, 0.75, 4), Vector3(3, 1.5, 6), Color(0.8, 0.5, 0.2))
-	FloorBuilder.label(self, "Shop 3: Player Cards", Vector3(17, 3, 4), 36)
+	var defs := [
+		{"pos": Vector3(-17, 0.75, -2), "size": Vector3(3, 1.5, 6), "color": Color(0.2, 0.5, 0.8), "category": "characters", "name": "Shop 1: Characters (Soria)"},
+		{"pos": Vector3(17, 0.75, -6), "size": Vector3(3, 1.5, 6), "color": Color(0.2, 0.7, 0.4), "category": "skins", "name": "Shop 2: Skins (Serrani)"},
+		{"pos": Vector3(17, 0.75, 4), "size": Vector3(3, 1.5, 6), "color": Color(0.8, 0.5, 0.2), "category": "decorations", "name": "Shop 3: Player Cards"},
+	]
+	for d in defs:
+		FloorBuilder.box(self, d["pos"], d["size"], d["color"])
+		FloorBuilder.label(self, d["name"], d["pos"] + Vector3(0, 2.3, 0), 36)
+		_shops.append({"pos": d["pos"], "category": d["category"], "name": d["name"]})
 	FloorBuilder.label(self, "Starting area", Vector3(0, 3, 10), 36)
 
 
@@ -165,17 +226,26 @@ func _add_player() -> void:
 
 # --- HUD -------------------------------------------------------------------------
 
-func _add_hud() -> void:
+func _add_ui() -> void:
 	var layer := CanvasLayer.new()
 	_hud = Label.new()
 	_hud.position = Vector2(16, 16)
-	_hud.add_theme_font_size_override("font_size", 22)
+	_hud.add_theme_font_size_override("font_size", 20)
 	layer.add_child(_hud)
 	_msg = Label.new()
-	_msg.position = Vector2(16, 300)
-	_msg.add_theme_font_size_override("font_size", 32)
+	_msg.position = Vector2(16, 380)
+	_msg.add_theme_font_size_override("font_size", 30)
 	layer.add_child(_msg)
 	add_child(layer)
+
+	_selection = SelectionScript.new()
+	add_child(_selection)
+	_shop = ShopScript.new()
+	add_child(_shop)
+	_shop.closed.connect(_sync_ui_lock)
+	_selection.confirmed.connect(func():
+		_sync_ui_lock()
+		RoundManager.finish_selection())
 
 
 func _show_message(text: String, duration_ms: int) -> void:
@@ -187,22 +257,45 @@ func _refresh_hud() -> void:
 	if Time.get_ticks_msec() > _msg_until_ms:
 		_msg.text = ""
 	var s: int = RoundManager.state
-	var lines := ["State: %s" % RoundManager.State.keys()[s], "Sonium: %d" % RoundManager.sonium]
+	var ch: Dictionary = GameData.CHARACTERS.get(RoundManager.loadout["character"], GameData.CHARACTERS["recruit"])
+	var skin: Dictionary = GameData.SKINS.get(RoundManager.loadout["skin"], GameData.SKINS["default"])
+	var deco: Dictionary = GameData.DECORATIONS.get(RoundManager.loadout["decoration"], GameData.DECORATIONS["none"])
+	var util: Dictionary = GameData.UTILITIES.get(RoundManager.loadout["utility"], GameData.UTILITIES["none"])
+	var lines: Array = [
+		"%s | %s | card: %s | %s" % [ch["name"], skin["name"], deco["name"], util["name"]],
+		"Sonium: %d   Best floor: %d" % [RoundManager.sonium, RoundManager.best_floor],
+		"State: %s" % RoundManager.State.keys()[s],
+	]
 	if s != RoundManager.State.LOBBY:
 		lines.append("Floor: %d" % RoundManager.floor_number)
 	if RoundManager.current_map != "":
 		lines.append("Map: %s" % RoundManager.current_map)
-		lines.append("Tasks: %d / %d" % [RoundManager.tasks_done, RoundManager.tasks_total])
+		lines.append(_task_line())
 	match s:
 		RoundManager.State.LOBBY:
-			lines.append("WASD move, mouse look, Tab frees mouse. Walk into an elevator.")
+			if _near_shop >= 0:
+				lines.append("Press F to open %s" % _shops[_near_shop]["name"])
+			else:
+				lines.append("WASD move, Shift sprint, mouse look, Tab frees mouse. Walk into an elevator.")
 		RoundManager.State.COUNTDOWN, RoundManager.State.PRE_FLOOR_ELEVATOR:
 			lines.append("Time: %d s" % ceili(RoundManager.time_left()))
 		RoundManager.State.SELECTION:
-			lines.append("Selection screen (not built yet). Press Enter to ready up. Auto-starts in %d s" % ceili(RoundManager.time_left()))
+			lines.append("Pick your loadout. Auto-confirms in %d s" % ceili(RoundManager.time_left()))
 		RoundManager.State.FLOOR:
-			lines.append("Hold E near a machine to fix it. (T completes a task - debug)")
+			lines.append("Beware the Corruptions. Sprinting and repairing are loud.")
 		RoundManager.State.PANIC, RoundManager.State.RETURN_TO_ELEVATOR:
 			lines.append("RUN BACK TO THE ELEVATOR! %d s left" % ceili(RoundManager.time_left()))
 	lines.append("Backspace: return to lobby")
 	_hud.text = "\n".join(lines)
+
+
+func _task_line() -> String:
+	var what := ""
+	match RoundManager.task_kind:
+		"containers":
+			what = "Open every storage container (hold E)"
+		"spotted":
+			what = "Get spotted by every Corruption"
+		_:
+			what = "Fix the machines (E)"
+	return "Task: %s  [%d / %d]" % [what, RoundManager.tasks_done, RoundManager.tasks_total]
