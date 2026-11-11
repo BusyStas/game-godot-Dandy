@@ -2,7 +2,7 @@ extends Node3D
 ## Lobby + run presentation: lobby, elevator cabin, per-run floor, shops, selection screen, HUD.
 ## Walk into an elevator to start a run. Keys:
 ##   WASD/mouse move+look, Shift sprint, E interact, F open a shop when standing near it
-##   Enter confirms the selection screen; T completes a task (debug); Backspace aborts the run
+##   Enter confirms the selection screen; T completes a task (debug); Backspace aborts the run; X quits
 
 const PlayerScript := preload("res://scripts/player.gd")
 const SelectionScript := preload("res://scripts/selection_screen.gd")
@@ -287,7 +287,7 @@ func _refresh_hud() -> void:
 			lines.append("RUN BACK TO THE ELEVATOR! %d s left" % ceili(RoundManager.time_left()))
 	if RoundManager.slow_factor < 1.0:
 		lines.append("Slowed by Rencha for this floor")
-	lines.append("Backspace: return to lobby")
+	lines.append("Backspace: return to lobby   X: quit")
 	_hud.text = "\n".join(lines)
 
 

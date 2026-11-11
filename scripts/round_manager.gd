@@ -49,6 +49,13 @@ func _ready() -> void:
 	_load()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	## Global shortcut: X quits the game from any screen.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_X:
+		_save()
+		get_tree().quit()
+
+
 # --- run flow -------------------------------------------------------------------
 
 func start_run() -> void:
