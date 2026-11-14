@@ -7,6 +7,8 @@ extends Node3D
 const PlayerScript := preload("res://scripts/player.gd")
 const SelectionScript := preload("res://scripts/selection_screen.gd")
 const ShopScript := preload("res://scripts/shop_ui.gd")
+const MinimapScript := preload("res://scripts/minimap.gd")
+const WarningScript := preload("res://scripts/warning_overlay.gd")
 
 const LOBBY_SPAWN := Vector3(0, 0.5, 10)
 const CABIN_ORIGIN := Vector3(100, 0, 0)
@@ -22,6 +24,7 @@ var _msg_until_ms := 0
 var _floor_root: Node3D
 var _floor_elevator: Area3D
 var _mirror: Node3D
+var _minimap: CanvasLayer
 var _selection: CanvasLayer
 var _shop: CanvasLayer
 var _shops: Array = []   # [{pos: Vector3, category: String, name: String}]
@@ -209,6 +212,7 @@ func _add_elevators() -> void:
 		var x := -9.0 + i * 6.0
 		FloorBuilder.build_elevator_doors(self, Vector3(x, 0, -14.45), 3.2, 3.0, true)
 		FloorBuilder.label(self, "Elevator %d" % (i + 1), Vector3(x, 4.6, -14.3))
+		FloorBuilder.map_marker(self, Color(0.2, 1.0, 0.3), 1.4, 7.0, true).position += Vector3(x, 0, -13.0)
 		var trigger := Area3D.new()
 		trigger.position = Vector3(x, 1.5, -12.5)
 		var cs := CollisionShape3D.new()
@@ -253,6 +257,10 @@ func _add_ui() -> void:
 	_msg.add_theme_font_size_override("font_size", 30)
 	layer.add_child(_msg)
 	add_child(layer)
+
+	_minimap = MinimapScript.new()
+	add_child(_minimap)
+	add_child(WarningScript.new())
 
 	_selection = SelectionScript.new()
 	add_child(_selection)
@@ -303,7 +311,7 @@ func _refresh_hud() -> void:
 			lines.append("RUN BACK TO THE ELEVATOR! %d s left" % ceili(RoundManager.time_left()))
 	if RoundManager.slow_factor < 1.0:
 		lines.append("Slowed by Rencha for this floor")
-	lines.append("Backspace: return to lobby   X or Ctrl+C: quit")
+	lines.append("Backspace: return to lobby   F11: fullscreen   X or Ctrl+C: quit")
 	_hud.text = "\n".join(lines)
 
 

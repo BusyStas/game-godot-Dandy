@@ -13,6 +13,7 @@ var _label: Label3D
 
 
 func _ready() -> void:
+	FloorBuilder.map_marker(self, Color(0.3, 0.6, 1.0), 0.7, 7.0, true)
 	var body := StaticBody3D.new()
 	body.position.y = 0.4
 	var mesh := MeshInstance3D.new()
@@ -44,6 +45,7 @@ func _ready() -> void:
 	add_child(body)
 
 	_label = Label3D.new()
+	_label.layers = FloorBuilder.LABEL_LAYER
 	_label.position.y = 1.4
 	_label.font_size = 36
 	_label.pixel_size = 0.01

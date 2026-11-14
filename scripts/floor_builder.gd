@@ -8,6 +8,8 @@ const MachineScript := preload("res://scripts/machine.gd")
 const ContainerScript := preload("res://scripts/container.gd")
 const CorruptionScript := preload("res://scripts/corruption.gd")
 const MirrorScript := preload("res://scripts/mirror.gd")
+const MAP_LAYER := 4         ## visual layer 3: icons seen only by the minimap camera
+const LABEL_LAYER := 512     ## visual layer 10: text labels, hidden from the minimap
 
 
 static func box(parent: Node, pos: Vector3, size: Vector3, color: Color, solid := true) -> Node3D:
@@ -39,11 +41,35 @@ static func label(parent: Node, text: String, pos: Vector3, size := 48, color :=
 	var l := Label3D.new()
 	l.text = text
 	l.modulate = color
+	l.layers = LABEL_LAYER
 	l.position = pos
 	l.font_size = size
 	l.pixel_size = 0.01
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	parent.add_child(l)
+
+
+## A flat icon floating above the walls that only the minimap camera renders.
+static func map_marker(parent: Node, color: Color, radius := 1.0, y := 7.0, square := false) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	if square:
+		var bm := BoxMesh.new()
+		bm.size = Vector3(radius * 2.0, 0.1, radius * 2.0)
+		m.mesh = bm
+	else:
+		var cm := CylinderMesh.new()
+		cm.top_radius = radius
+		cm.bottom_radius = radius
+		cm.height = 0.1
+		m.mesh = cm
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	m.material_override = mat
+	m.layers = MAP_LAYER
+	m.position = Vector3(0, y, 0)
+	parent.add_child(m)
+	return m
 
 
 static func _emissive(parent: Node, pos: Vector3, size: Vector3, color: Color, energy := 1.5) -> void:
@@ -176,6 +202,7 @@ static func build_floor(map_name: String, origin: Vector3, cfg: Dictionary) -> D
 	# The elevator you must return to
 	build_elevator_doors(root, Vector3(0, 0, -d / 2.0 + 0.55), 3.2, 3.0, true)
 	label(root, "ELEVATOR", Vector3(0, 4.6, -d / 2.0 + 1.0), 48)
+	map_marker(root, Color(0.2, 1.0, 0.3), 1.8, 7.0, true).position += Vector3(0, 0, -d / 2.0 + 2.5)
 	var elevator := Area3D.new()
 	elevator.position = Vector3(0, 1.5, -d / 2.0 + 3.0)
 	var cs := CollisionShape3D.new()

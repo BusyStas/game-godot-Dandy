@@ -37,6 +37,7 @@ func _ready() -> void:
 	_cam.keep_aspect = Camera3D.KEEP_WIDTH
 	_cam.size = SIZE
 	_cam.far = 80.0
+	_cam.cull_mask = 0xFFFFF & ~4   # no minimap icons in the reflection
 	_vp.add_child(_cam)
 	_cam.current = true
 

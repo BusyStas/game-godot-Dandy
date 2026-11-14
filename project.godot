@@ -18,6 +18,12 @@ config/name="game-godot-dandy"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.7")
 
+[display]
+
+window/size/mode=3
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
 [autoload]
 
 RoundManager="*res://scripts/round_manager.gd"

@@ -26,6 +26,7 @@ var _label: Label3D
 
 
 func _ready() -> void:
+	FloorBuilder.map_marker(self, Color(1.0, 0.8, 0.1), 0.9, 7.0, true)
 	_goal = KINDS[kind]["goal"]
 	var body := StaticBody3D.new()
 	body.position.y = 0.7
@@ -69,6 +70,7 @@ func _ready() -> void:
 	add_child(body)
 
 	_label = Label3D.new()
+	_label.layers = FloorBuilder.LABEL_LAYER
 	_label.position.y = 2.0
 	_label.font_size = 40
 	_label.pixel_size = 0.01

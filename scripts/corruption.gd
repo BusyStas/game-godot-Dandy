@@ -19,6 +19,7 @@ var _heard_pos := Vector3.ZERO
 var _heard_until := 0.0
 var _wander := Vector3.ZERO
 var _sight_timer := 0.0
+var _last_seen := -100.0
 var _visual: Node3D
 var _label: Label3D
 
@@ -42,7 +43,9 @@ func _ready() -> void:
 	_label.font_size = 36
 	_label.pixel_size = 0.01
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label.layers = FloorBuilder.LABEL_LAYER
 	_visual.add_child(_label)
+	FloorBuilder.map_marker(_visual, Color(1.0, 0.1, 0.1), 1.1)
 
 	_revealed = kind != "surrena"
 	_visual.visible = _revealed
@@ -65,6 +68,10 @@ func _physics_process(delta: float) -> void:
 	if _sight_timer <= 0.0:
 		_sight_timer = 0.25
 		if dist < SIGHT_RANGE and _has_los():
+			if _revealed:
+				if _now() - _last_seen > 15.0:
+					RoundManager.warn_monster(kind)
+				_last_seen = _now()
 			RoundManager.corruption_spotted(get_instance_id())
 			if kind == "rencha":
 				RoundManager.apply_slow()
@@ -99,6 +106,8 @@ func _physics_process(delta: float) -> void:
 					_revealed = true
 					_visual.visible = true
 					_dash_until = _now() + 3.0
+					_last_seen = _now()
+					RoundManager.warn_monster(kind)
 			else:
 				target = _player.global_position
 				speed = 9.0 if _now() < _dash_until else 3.0

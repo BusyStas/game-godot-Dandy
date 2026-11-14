@@ -34,13 +34,18 @@ func _ready() -> void:
 	_cam.position.y = 1.6
 	add_child(_cam)
 	_cam.current = true
-	_cam.cull_mask = 0xFFFFF & ~2   # layer 2 holds the mirror-only reflection figure
+	_cam.cull_mask = 0xFFFFF & ~2 & ~4   # layer 2: mirror-only figure, layer 3: minimap icons
 
 	_lamp = OmniLight3D.new()
 	_lamp.omni_range = 14.0
 	_lamp.light_energy = 1.6
 	_lamp.visible = false
 	_cam.add_child(_lamp)
+
+	# minimap icon: white disc with a nose pointing the way you face (-Z)
+	var icon := FloorBuilder.map_marker(self, Color.WHITE, 1.2, 8.0)
+	var nose := FloorBuilder.map_marker(icon, Color(1.0, 0.9, 0.0), 0.7, 0.0, true)
+	nose.position = Vector3(0, 0.1, -1.5)
 
 	apply_loadout()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

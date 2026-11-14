@@ -10,6 +10,14 @@ signal floor_ended          ## return timer ran out; listeners may kill the run
 signal sonium_changed(total: int)
 signal player_died(reason: String)
 signal notice(text: String)
+signal monster_warning(kind: String, text: String)
+
+const MONSTER_WARNINGS := {
+	"soria": "SORIA is hunting you - RUN!",
+	"serrani": "SERRANI is close - stop sprinting, stay quiet!",
+	"surrena": "SURRENA burst out of the wall - RUN!",
+	"rencha": "RENCHA is watching you - you are slowed!",
+}
 
 enum State { LOBBY, COUNTDOWN, SELECTION, PRE_FLOOR_ELEVATOR, FLOOR, PANIC, RETURN_TO_ELEVATOR, RESULTS }
 
@@ -54,6 +62,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	var ctrl_c: bool = event.keycode == KEY_C and event.ctrl_pressed
+	if event.keycode == KEY_F11:
+		var fs := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fs else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		return
 	if event.keycode == KEY_X or ctrl_c:
 		if ctrl_c:
 			print("^C")
@@ -146,6 +158,11 @@ func apply_slow() -> void:
 
 func spotted_count() -> int:
 	return _spotted.size()
+
+
+func warn_monster(kind: String) -> void:
+	if state == State.FLOOR or state == State.PANIC or state == State.RETURN_TO_ELEVATOR:
+		monster_warning.emit(kind, MONSTER_WARNINGS.get(kind, "A monster is near!"))
 
 
 func kill_player(reason: String) -> void:
