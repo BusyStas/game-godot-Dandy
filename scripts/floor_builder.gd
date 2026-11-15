@@ -8,6 +8,7 @@ const MachineScript := preload("res://scripts/machine.gd")
 const ContainerScript := preload("res://scripts/container.gd")
 const CorruptionScript := preload("res://scripts/corruption.gd")
 const MirrorScript := preload("res://scripts/mirror.gd")
+const MedkitScript := preload("res://scripts/medkit.gd")
 const MAP_LAYER := 4         ## visual layer 3: icons seen only by the minimap camera
 const LABEL_LAYER := 512     ## visual layer 10: text labels, hidden from the minimap
 
@@ -182,8 +183,8 @@ static func build_cabin(origin: Vector3) -> Node3D:
 	return root
 
 
-## Returns {"root": Node3D, "elevator": Area3D, "spawn": Vector3}.
-## cfg: {"floor": int, "machines": int, "containers": int, "corruptions": int}
+## Returns {"root": Node3D, "elevator": Area3D, "spawn": Vector3, "kinds": Array}.
+## cfg: {"floor": int, "machines": int, "containers": int, "corruptions": int, optional "kinds": Array to force kinds}
 static func build_floor(map_name: String, origin: Vector3, cfg: Dictionary) -> Dictionary:
 	var th: Dictionary = GameData.theme(map_name)
 	var w: float = th["w"]
@@ -233,9 +234,11 @@ static func build_floor(map_name: String, origin: Vector3, cfg: Dictionary) -> D
 		root.add_child(c)
 		_reserve(rects, c.position, 3.0)
 
-	var wander_bounds := Rect2(origin.x - w / 2.0 + 2.0, origin.z - d / 2.0 + 8.0, w - 4.0, d - 10.0)
+	var kinds: Array = []
 	for i in int(cfg["corruptions"]):
-		var kind := _pick_corruption_kind(rng, int(cfg["floor"]))
+		kinds.append(cfg["kinds"][i] if cfg.has("kinds") and i < cfg["kinds"].size() else GameData.pick_corruption(rng, int(cfg["floor"])))
+	var wander_bounds := Rect2(origin.x - w / 2.0 + 2.0, origin.z - d / 2.0 + 8.0, w - 4.0, d - 10.0)
+	for kind in kinds:
 		var cr := CharacterBody3D.new()
 		cr.set_script(CorruptionScript)
 		cr.set("kind", kind)
@@ -246,7 +249,17 @@ static func build_floor(map_name: String, origin: Vector3, cfg: Dictionary) -> D
 			cr.position = _free_point(rng, w, d, rects, spawn_local, 16.0)
 		root.add_child(cr)
 
-	return {"root": root, "elevator": elevator, "spawn": origin + spawn_local}
+	# healing items; Sonia poisons some of them (deck: "Sonia can poison healing items")
+	var sonia_here := kinds.has("sonia")
+	for i in (2 if int(cfg["floor"]) >= 10 else 1):
+		var k := Node3D.new()
+		k.set_script(MedkitScript)
+		k.set("poisoned", sonia_here and rng.randf() < 0.5)
+		k.position = _free_point(rng, w, d, rects, spawn_local, 6.0)
+		root.add_child(k)
+		_reserve(rects, k.position, 3.0)
+
+	return {"root": root, "elevator": elevator, "spawn": origin + spawn_local, "kinds": kinds}
 
 
 # --- helpers --------------------------------------------------------------------
@@ -260,17 +273,6 @@ static func _pick_machine_kind(rng: RandomNumberGenerator, f: int) -> String:
 		pool.append("search")
 	if f >= 6:
 		pool.append("treadmill")
-	return pool[rng.randi() % pool.size()]
-
-
-static func _pick_corruption_kind(rng: RandomNumberGenerator, f: int) -> String:
-	var pool := ["serrani", "serrani", "serrani", "surrena", "surrena"]
-	if f >= 4:
-		pool.append("rencha")
-		pool.append("rencha")
-	if f >= 8:
-		pool.append("soria")
-		pool.append("soria")
 	return pool[rng.randi() % pool.size()]
 
 

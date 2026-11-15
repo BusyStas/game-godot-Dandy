@@ -1,6 +1,6 @@
 # game-godot-dandy
 
-**Soria's Expeditions** - co-op elevator/floor survival game in Godot 4.7 (GDScript). Design source: Daniel Prikhodko's deck, summarised in `.claude/requirements.md`.
+**Sonia's Expeditions** - co-op elevator/floor survival game in Godot 4.7 (GDScript). Design source: Daniel Prikhodko's deck, summarised in `.claude/requirements.md`.
 
 ## Run
 Open `project.godot` in Godot 4.7 and press F5, or `godot --path .`. It starts on the title screen.
@@ -35,3 +35,11 @@ Keep the `*.gd.uid` files committed next to their scripts.
 - The game starts fullscreen (borderless); **F11** toggles windowed/fullscreen. The UI scales with the window.
 - **Minimap** (top-right): a top-down camera over the real level, north up. White disc with a yellow nose = you, red = monsters (hidden Surrena only once it bursts out), yellow squares = machines, blue squares = containers, green square = the elevator. Hidden inside the cabin.
 - **Monster warning**: a flashing red screen glow, "!! WARNING !!" banner and a siren beep when a monster comes into view (re-armed after 15 s out of sight) or when Surrena bursts from a wall.
+
+## Corruptions, health and research (deck update 2026-11-15)
+- Game name is **Sonia's Expeditions** now. Eight Corruptions (Sonia, Serrani, Surrena, Rencha, Cybot 1.2.7, Ivina, Bolten, Dreina), each with its own behaviour; see `.claude/requirements.md` section 13.
+- **Health**: 6 HP (bottom-left). Fatals kill instantly, Stalks deal 2, Dreina 1. **E** next to a medkit heals 2 (Sonia may poison them).
+- **Minigames**: Surrena's grab (mash **A/D**), Ivina's thorns (click the red points).
+- **Research**: press **R** in the lobby; claim rewards after four tasks per Corruption.
+- By the deck's spawn table only Dreina appears before floor 10. To meet the others, press **PageUp** in the lobby to start deeper (floor 11 = Stalks, floor 21 = Fatals).
+- New scripts: `hazard.gd` (puddles, plants), `medkit.gd`, `minigame.gd`, `research_ui.gd`, `status_hud.gd`.

@@ -3,31 +3,99 @@ extends RefCounted
 ## Builds the characters as drawn in the design deck: a black suit with white stripes, blue-cuffed
 ## gloves and a big flat cartoon head. Heads are painted at runtime into textures (no art files needed)
 ## and shown on a quad; bodies are simple boxes. The model faces -Z (Godot's forward).
-## Kinds: soria, serrani, surrena (the "Fatal" three) and rencha (a "Stalk" enemy).
+## Kinds: sonia, serrani, surrena (the "Fatal" three), rencha, cybot, ivina, bolten (the "Stalk" class)
+## and dreina (a "Friendler"). Enemies are drawn as Corrupted: black Sonium goo and glowing red eyes.
 
 # kind -> [metres per pixel, pixel row of the head's bottom edge, pixel column of the head's centre, extra gap above the body]
 const HEAD_SPEC := {
-	"soria": [0.0025, 190, 260, 0.0],
+	"sonia": [0.0025, 190, 260, 0.0],
 	"serrani": [0.0022, 290, 210, 0.0],
 	"surrena": [0.0026, 295, 150, 0.0],
 	"rencha": [0.0019, 205, 260, 0.1],
+	"cybot": [0.0024, 260, 110, 0.0],
+	"ivina": [0.0024, 262, 110, 0.0],
+	"bolten": [0.0023, 245, 115, 0.0],
+	"dreina": [0.0023, 265, 110, 0.0],
+}
+
+# kind -> pixel positions (column, row) of the two eyes in the head texture, used for the red Corruption glow
+const EYES := {
+	"sonia": [Vector2(172, 109), Vector2(344, 109)],
+	"serrani": [Vector2(110, 135), Vector2(210, 128)],
+	"surrena": [Vector2(100, 112), Vector2(207, 115)],
+	"rencha": [Vector2(250, 138), Vector2(360, 148)],
+	"cybot": [Vector2(80, 160), Vector2(138, 160)],
+	"ivina": [Vector2(85, 150), Vector2(138, 150)],
+	"bolten": [Vector2(95, 120), Vector2(140, 104)],
+	"dreina": [Vector2(80, 165), Vector2(140, 165)],
+}
+
+# body styles: torso, stripes (or null), belt, pants, arm, cuff, arm stripe, extra
+const BODY_STYLES := {
+	"fatal": {"torso": Color(0, 0, 0), "stripe": Color.WHITE, "belt": Color.WHITE, "pants": Color(0.35, 0.35, 0.35), "arm": Color(0, 0, 0), "cuff": Color(0.12, 0.3, 0.75), "arm_stripe": true},
+	"rencha": {"torso": Color(0.27, 0.27, 0.27), "stripe": null, "belt": null, "pants": Color(0.62, 0.78, 0.92), "arm": Color(0.27, 0.27, 0.27), "cuff": Color(0.7, 0.7, 0.7), "arm_stripe": false},
+	"cybot": {"torso": Color(0.27, 0.27, 0.27), "stripe": null, "belt": Color(0.45, 0.25, 0.05), "pants": Color(0.25, 0.45, 0.9), "arm": Color(0.3, 0.3, 0.3), "cuff": Color(0.8, 0.82, 0.85), "arm_stripe": false},
+	"ivina": {"torso": Color(0.95, 0.95, 0.95), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.95, 0.95, 0.95), "arm": Color(0.95, 0.95, 0.95), "cuff": Color(0.4, 0.65, 0.3), "arm_stripe": true},
+	"dreina": {"torso": Color(0.95, 0.95, 0.95), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.95, 0.95, 0.95), "arm": Color(0.95, 0.95, 0.95), "cuff": Color(0.25, 0.5, 0.95), "arm_stripe": true},
+	"bolten": {"torso": Color(0.8, 0.02, 0.02), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.8, 0.02, 0.02), "arm": Color(0.8, 0.02, 0.02), "cuff": Color(1.0, 0.9, 0.1), "arm_stripe": false},
 }
 
 static var _tex_cache := {}
 
 
+static func style_of(kind: String) -> String:
+	match kind:
+		"sonia", "serrani", "surrena":
+			return "fatal"
+	return kind
+
+
+## An enemy: body + head, then black Sonium goo and red glowing eyes ("Corrupted").
 static func build(kind: String) -> Node3D:
 	var root := Node3D.new()
-	var fatal := kind != "rencha"
-	_body(root, fatal)
+	_body(root, style_of(kind))
 	_head(root, kind)
+	_corrupt(root, kind)
 	return root
+
+
+static func _corrupt(root: Node3D, kind: String) -> void:
+	# black goo blotches on the body
+	for blot in [[Vector3(0.0, 0.95, 0.0), Vector3(0.5, 0.34, 0.33)], [Vector3(-0.2, 1.38, 0.0), Vector3(0.18, 0.2, 0.31)],
+			[Vector3(0.22, 0.45, 0.0), Vector3(0.26, 0.5, 0.28)]]:
+		_box(root, blot[0], blot[1], Color(0.02, 0.0, 0.03))
+	# red glowing eyes in front of the head
+	var spec: Array = HEAD_SPEC[kind]
+	var scale: float = spec[0]
+	for e in EYES[kind]:
+		var pos := Vector3((float(spec[2]) - e.x) * scale, 1.45 + float(spec[3]) + (float(spec[1]) - e.y) * scale, -0.06)
+		var m := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.05
+		sm.height = 0.1
+		m.mesh = sm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.05, 0.05)
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.0, 0.0)
+		mat.emission_energy_multiplier = 3.0
+		m.material_override = mat
+		m.position = pos
+		root.add_child(m)
+	# the glow shows where the Corruption is in poor lighting
+	var glow := OmniLight3D.new()
+	glow.position = Vector3(0, 1.7, -0.3)
+	glow.light_color = Color(1.0, 0.1, 0.05)
+	glow.light_energy = 0.9
+	glow.omni_range = 4.0
+	root.add_child(glow)
 
 
 ## A plain figure for the player (used for the elevator mirror reflection): the same suit with a skin-coloured head.
 static func build_player(skin: Color) -> Node3D:
 	var root := Node3D.new()
-	_body(root, true)
+	_body(root, "fatal")
 	var head := MeshInstance3D.new()
 	var sm := SphereMesh.new()
 	sm.radius = 0.2
@@ -59,21 +127,22 @@ static func set_visual_layers(node: Node, layers: int) -> void:
 		set_visual_layers(c, layers)
 
 
-static func _body(root: Node3D, fatal: bool) -> void:
-	var suit := Color(0, 0, 0) if fatal else Color(0.27, 0.27, 0.27)
-	var pants := Color(0.35, 0.35, 0.35) if fatal else Color(0.62, 0.78, 0.92)
-	var cuff := Color(0.12, 0.3, 0.75) if fatal else Color(0.7, 0.7, 0.7)
+static func _body(root: Node3D, style: String) -> void:
+	var st: Dictionary = BODY_STYLES[style]
 	for sx in [-1.0, 1.0]:
-		_box(root, Vector3(sx * 0.13, 0.4, 0), Vector3(0.22, 0.8, 0.24), pants)
-	_box(root, Vector3(0, 1.12, 0), Vector3(0.46, 0.66, 0.28), suit)
-	if fatal:
+		_box(root, Vector3(sx * 0.13, 0.4, 0), Vector3(0.22, 0.8, 0.24), st["pants"])
+	_box(root, Vector3(0, 1.12, 0), Vector3(0.46, 0.66, 0.28), st["torso"])
+	if st["stripe"] != null:
 		for sx in [-1.0, 1.0]:
-			_box(root, Vector3(sx * 0.1, 1.12, -0.145), Vector3(0.035, 0.6, 0.01), Color.WHITE)
-		_box(root, Vector3(0, 0.82, 0), Vector3(0.48, 0.06, 0.3), Color.WHITE)
+			_box(root, Vector3(sx * 0.1, 1.12, -0.145), Vector3(0.035, 0.6, 0.01), st["stripe"])
+	if st["belt"] != null:
+		_box(root, Vector3(0, 0.82, 0), Vector3(0.48, 0.06, 0.3), st["belt"])
 	for sx in [-1.0, 1.0]:
-		_arm(root, sx, suit, cuff, fatal, (not fatal) and sx > 0.0)
-	if not fatal:
+		_arm(root, sx, st["arm"], st["cuff"], st["arm_stripe"], style == "rencha" and sx > 0.0)
+	if style == "rencha":
 		_box(root, Vector3(0, 1.5, 0), Vector3(0.1, 0.14, 0.1), Color(0.6, 0.6, 0.6))
+	elif style == "cybot":
+		_box(root, Vector3(0, 1.5, 0), Vector3(0.1, 0.14, 0.1), Color(0.8, 0.8, 0.8))
 
 
 static func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> void:
@@ -130,12 +199,20 @@ static func _texture(kind: String) -> ImageTexture:
 		return _tex_cache[kind]
 	var img: Image
 	match kind:
-		"soria":
-			img = _draw_soria()
+		"sonia":
+			img = _draw_sonia()
 		"serrani":
 			img = _draw_serrani()
 		"surrena":
 			img = _draw_surrena()
+		"cybot":
+			img = _draw_cybot()
+		"ivina":
+			img = _draw_ivina()
+		"bolten":
+			img = _draw_bolten()
+		"dreina":
+			img = _draw_dreina()
 		_:
 			img = _draw_rencha()
 	img.generate_mipmaps()
@@ -206,7 +283,7 @@ static func _shrink(pts: PackedVector2Array, factor: float) -> PackedVector2Arra
 	return out
 
 
-static func _draw_soria() -> Image:
+static func _draw_sonia() -> Image:
 	var img := _new(460, 200)
 	# syringe needle on the left, dark tip fading to light
 	_poly(img, PackedVector2Array([Vector2(0, 95), Vector2(28, 80), Vector2(75, 80), Vector2(75, 110), Vector2(28, 110)]),
@@ -272,4 +349,56 @@ static func _draw_rencha() -> Image:
 	_ellipse(img, 360, 148, 40, 27, Color.WHITE)
 	_ellipse(img, 360, 150, 31, 20, Color.BLACK)
 	_poly(img, PackedVector2Array([Vector2(300, 176), Vector2(336, 172), Vector2(318, 196)]), Color.BLACK)
+	return img
+
+
+static func _eye(img: Image, cx: float, cy: float, rx: float, ry: float) -> void:
+	_ellipse(img, cx, cy, rx, ry, Color.WHITE)
+	_ellipse(img, cx + 1, cy + 2, rx * 0.72, ry * 0.72, Color.BLACK)
+
+
+static func _draw_cybot() -> Image:
+	var img := _new(220, 270)
+	_rrect(img, 38, 0, 144, 84, 6.0, Color(0.05, 0.05, 0.05))     # top hat
+	_rrect(img, 22, 70, 176, 26, 5.0, Color(1.0, 0.6, 0.05))      # orange hat band
+	_rrect(img, 34, 100, 152, 160, 10.0, Color(0.82, 0.82, 0.82)) # square head
+	_rrect(img, 66, 148, 30, 26, 4.0, Color.BLACK)                # eyes
+	_rrect(img, 124, 148, 30, 26, 4.0, Color.BLACK)
+	_rrect(img, 72, 154, 12, 12, 2.0, Color.WHITE)
+	_rrect(img, 130, 154, 12, 12, 2.0, Color.WHITE)
+	_rrect(img, 88, 206, 44, 12, 4.0, Color.BLACK)                # mouth
+	return img
+
+
+static func _draw_ivina() -> Image:
+	var img := _new(220, 270)
+	var leaf := func(_x, y): return Color(0.4, 0.5, 0.3).lerp(Color(0.62, 0.75, 0.5), clampf(y / 262.0, 0.0, 1.0))
+	_poly(img, PackedVector2Array([Vector2(150, 0), Vector2(60, 120), Vector2(170, 130)]), leaf)  # pointed leaf tip
+	_ellipse(img, 112, 175, 78, 88, leaf)
+	_eye(img, 86, 150, 20, 16)
+	_eye(img, 140, 148, 20, 16)
+	_poly(img, PackedVector2Array([Vector2(98, 200), Vector2(126, 198), Vector2(112, 214)]), Color.BLACK)
+	return img
+
+
+static func _draw_bolten() -> Image:
+	var img := _new(220, 250)
+	var yellow := Color(1.0, 0.85, 0.05)
+	_poly(img, PackedVector2Array([Vector2(105, 0), Vector2(30, 120), Vector2(90, 112), Vector2(50, 245), Vector2(190, 95), Vector2(125, 105), Vector2(180, 0)]), yellow)
+	_eye(img, 93, 125, 17, 14)
+	_eye(img, 142, 106, 17, 14)
+	_poly(img, PackedVector2Array([Vector2(100, 170), Vector2(138, 150), Vector2(124, 178)]), Color.BLACK)
+	return img
+
+
+static func _draw_dreina() -> Image:
+	var img := _new(250, 280)
+	var blue := Color(0.25, 0.5, 0.95)
+	_poly(img, PackedVector2Array([Vector2(112, 20), Vector2(36, 135), Vector2(188, 135)]), blue)   # droplet tip
+	_ellipse(img, 112, 180, 85, 92, blue)
+	_ellipse(img, 175, 38, 42, 32, Color(0.1, 0.1, 0.85))     # blue blob on top
+	_ellipse(img, 222, 70, 22, 22, Color(0.2, 0.3, 0.95))
+	_eye(img, 80, 168, 20, 17)
+	_eye(img, 142, 168, 20, 17)
+	_poly(img, PackedVector2Array([Vector2(98, 205), Vector2(150, 200), Vector2(124, 226)]), Color.BLACK)
 	return img

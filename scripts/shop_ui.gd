@@ -5,7 +5,7 @@ extends CanvasLayer
 signal closed
 
 const HEADINGS := {
-	"characters": "Shop 1 - Characters (Soria)",
+	"characters": "Shop 1 - Characters (Sonia)",
 	"skins": "Shop 2 - Skins (Serrani)",
 	"decorations": "Shop 3 - Player Card Decorations",
 }

@@ -1,5 +1,5 @@
 extends Control
-## Loading/title screen. The "i" in Soria is her head sideways (a teal capsule lying down).
+## Loading/title screen. The "i" in Sonia is her head sideways (a teal capsule lying down).
 ## First launch: pick one of the two starting characters. Afterwards: just start.
 
 const LOBBY := "res://scenes/lobby.tscn"
@@ -20,11 +20,11 @@ func _ready() -> void:
 	vb.add_theme_constant_override("separation", 18)
 	center.add_child(vb)
 
-	# Logo: "Sor" + sideways head + "a's Expeditions"
+	# Logo: "Son" + sideways head + "a's Expeditions"
 	var logo := HBoxContainer.new()
 	logo.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_child(logo)
-	logo.add_child(_logo_label("Sor"))
+	logo.add_child(_logo_label("Son"))
 	var head := Control.new()
 	head.custom_minimum_size = Vector2(70, 70)
 	logo.add_child(head)

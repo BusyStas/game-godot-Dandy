@@ -11,13 +11,9 @@ signal sonium_changed(total: int)
 signal player_died(reason: String)
 signal notice(text: String)
 signal monster_warning(kind: String, text: String)
-
-const MONSTER_WARNINGS := {
-	"soria": "SORIA is hunting you - RUN!",
-	"serrani": "SERRANI is close - stop sprinting, stay quiet!",
-	"surrena": "SURRENA burst out of the wall - RUN!",
-	"rencha": "RENCHA is watching you - you are slowed!",
-}
+signal health_changed(hp: int, max_hp: int)
+signal minigame_requested(kind: String, source: Node, data: Dictionary)
+signal research_changed
 
 enum State { LOBBY, COUNTDOWN, SELECTION, PRE_FLOOR_ELEVATOR, FLOOR, PANIC, RETURN_TO_ELEVATOR, RESULTS }
 
@@ -29,6 +25,8 @@ const RESULTS_SECONDS := 5.0
 const MACHINE_REWARD := 10
 const CONTAINER_REWARD := 5
 const CHALLENGE_BONUS := 100         # PLACEHOLDER: reward for beating a shop-character challenge floor
+const MAX_HEALTH := 6                # PLACEHOLDER: the deck gives damage values (stalk 2, others 1) but no health total
+const HIT_COOLDOWN := 1.2            # seconds of invulnerability after taking damage
 const SAVE_PATH := "user://save.cfg"
 
 var state: State = State.LOBBY
@@ -41,6 +39,25 @@ var machine_count := 3
 var container_count := 2
 var corruption_count := 1
 var slow_factor := 1.0   ## <1 once Rencha has seen the player on this floor
+var start_floor := 1     ## debug: the floor a new run starts on (PageUp/PageDown in the lobby)
+var health := MAX_HEALTH
+var minigame_active := false
+
+# status effects (timestamps are seconds from Time.get_ticks_msec)
+var poisoned_until := 0.0
+var sick_until := 0.0
+var dim_until := 0.0
+var chunk_until := 0.0
+var _invuln_until := 0.0
+var _slows := {}          # key -> [factor, until]
+var _poison_tick := 0.0
+
+# research: kind -> {"p": [progress x4], "claimed": bool}
+var research := {}
+var immune_slow := false
+var immune_poison := false
+var speed_perk := 1.0
+var sealant := false      # Cybot research utility: broken machines leak slower
 
 var sonium := 0
 var best_floor := 0
@@ -54,7 +71,26 @@ var _spotted := {}
 
 
 func _ready() -> void:
+	for k in GameData.RESEARCH:
+		research[k] = {"p": [0.0, 0.0, 0.0, 0.0], "claimed": false}
 	_load()
+	_apply_rewards()
+
+
+func _process(delta: float) -> void:
+	if not in_floor():
+		return
+	_poison_tick -= delta
+	if _poison_tick <= 0.0:
+		_poison_tick = 3.0
+		if now() < poisoned_until and health > 1:
+			health -= 1
+			health_changed.emit(health, MAX_HEALTH)
+			notice.emit("Poison! HP %d/%d" % [health, MAX_HEALTH])
+
+
+func now() -> float:
+	return Time.get_ticks_msec() / 1000.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -79,7 +115,10 @@ func start_run() -> void:
 	if state != State.LOBBY:
 		return
 	_run_id += 1
-	floor_number = 1
+	floor_number = maxi(start_floor, 1)
+	_clear_status()
+	health = MAX_HEALTH
+	health_changed.emit(health, MAX_HEALTH)
 	_set_state(State.COUNTDOWN)
 	_after(COUNTDOWN_SECONDS, _enter_selection)
 
@@ -99,6 +138,8 @@ func reset() -> void:
 	tasks_total = 0
 	_spotted.clear()
 	slow_factor = 1.0
+	_clear_status()
+	minigame_active = false
 	_set_state(State.LOBBY)
 
 
@@ -150,7 +191,7 @@ func corruption_spotted(id: int) -> void:
 
 func apply_slow() -> void:
 	## Rencha's ability: once it has seen you, you are slowed for the rest of the floor.
-	if slow_factor < 1.0:
+	if slow_factor < 1.0 or immune_slow:
 		return
 	slow_factor = 0.8
 	notice.emit("Rencha is stalking you - you feel slower.")
@@ -162,7 +203,176 @@ func spotted_count() -> int:
 
 func warn_monster(kind: String) -> void:
 	if state == State.FLOOR or state == State.PANIC or state == State.RETURN_TO_ELEVATOR:
-		monster_warning.emit(kind, MONSTER_WARNINGS.get(kind, "A monster is near!"))
+		monster_warning.emit(kind, GameData.WARNINGS.get(kind, "A monster is near!"))
+
+
+## Damage from a Corruption. Fatals (damage >= 999) kill instantly; others take health, with a short
+## invulnerability window after each hit.
+func damage(amount: int, source: String) -> void:
+	if not in_floor():
+		return
+	if amount >= 999:
+		kill_player("Caught by %s" % source)
+		return
+	if now() < _invuln_until:
+		return
+	health -= amount
+	_invuln_until = now() + HIT_COOLDOWN
+	health_changed.emit(health, MAX_HEALTH)
+	notice.emit("%s hit you for %d! HP %d/%d" % [source, amount, maxi(health, 0), MAX_HEALTH])
+	if health <= 0:
+		kill_player("Killed by %s" % source)
+
+
+func heal(amount: int) -> void:
+	health = mini(health + amount, MAX_HEALTH)
+	health_changed.emit(health, MAX_HEALTH)
+
+
+func grant_invulnerability(seconds: float) -> void:
+	_invuln_until = maxf(_invuln_until, now() + seconds)
+
+
+func poison(seconds := 9.0) -> void:
+	if immune_poison:
+		return
+	if now() >= poisoned_until:
+		notice.emit("You are poisoned!")
+	poisoned_until = now() + seconds
+
+
+func make_sick(seconds := 15.0) -> void:
+	sick_until = now() + seconds
+
+
+func add_slow(key: String, factor: float, seconds: float) -> void:
+	_slows[key] = [factor, now() + seconds]
+
+
+func add_dim(seconds: float) -> void:
+	dim_until = maxf(dim_until, now() + seconds)
+
+
+func add_chunk(seconds: float) -> void:
+	chunk_until = now() + seconds
+	research_event("dreina", "chunked")
+
+
+func is_chunked() -> bool:
+	return now() < chunk_until
+
+
+func is_poisoned() -> bool:
+	return now() < poisoned_until
+
+
+## 0..1 how dark the screen should be (Dreina's Sonium puddles make it harder to see).
+func dim_amount() -> float:
+	return 0.55 if now() < dim_until else 0.0
+
+
+## Combined movement multiplier: Rencha's slowness, timed slows (puddles, plants), sickness and research perks.
+func speed_factor() -> float:
+	var f := slow_factor * speed_perk
+	if now() < sick_until:
+		f *= 0.85
+	var t := now()
+	for k in _slows.keys():
+		if t < float(_slows[k][1]):
+			f *= float(_slows[k][0])
+	return f
+
+
+func request_minigame(kind: String, source: Node, data := {}) -> bool:
+	if minigame_active or not in_floor():
+		return false
+	minigame_active = true
+	minigame_requested.emit(kind, source, data)
+	return true
+
+
+func end_minigame() -> void:
+	minigame_active = false
+
+
+# --- research ---------------------------------------------------------------------
+
+## set_max: treat `amount` as a running total and keep the highest value (for "N seconds straight" tasks).
+func research_event(kind: String, ev: String, amount := 1.0, set_max := false) -> void:
+	if not in_floor() or not GameData.RESEARCH.has(kind):
+		return
+	var tasks: Array = GameData.RESEARCH[kind]["tasks"]
+	var rec: Dictionary = research[kind]
+	for i in tasks.size():
+		if tasks[i]["ev"] != ev:
+			continue
+		var goal: float = tasks[i]["goal"]
+		var before: float = rec["p"][i]
+		if before >= goal:
+			return
+		rec["p"][i] = minf(maxf(before, amount) if set_max else before + amount, goal)
+		if rec["p"][i] >= goal:
+			notice.emit("Research: %s - task %d done!" % [GameData.CORRUPTIONS[kind]["name"], i + 1])
+			_save()
+		research_changed.emit()
+		return
+
+
+func research_complete(kind: String) -> bool:
+	var tasks: Array = GameData.RESEARCH[kind]["tasks"]
+	for i in tasks.size():
+		if float(research[kind]["p"][i]) < float(tasks[i]["goal"]):
+			return false
+	return true
+
+
+func research_cost(kind: String) -> int:
+	return int(GameData.RESEARCH[kind]["cost_jars"]) * GameData.JAR_SONIUM
+
+
+func can_claim(kind: String) -> bool:
+	return research_complete(kind) and not research[kind]["claimed"] and sonium >= research_cost(kind)
+
+
+func claim_research(kind: String) -> bool:
+	if not can_claim(kind):
+		return false
+	sonium -= research_cost(kind)
+	research[kind]["claimed"] = true
+	sonium_changed.emit(sonium)
+	_apply_rewards()
+	_save()
+	research_changed.emit()
+	return true
+
+
+func title() -> String:
+	var all := true
+	for k in research:
+		if not research[k]["claimed"]:
+			all = false
+	if all:
+		return GameData.MASTER_TITLE
+	for k in research:
+		if research[k]["claimed"] and GameData.RESEARCH[k]["reward"] == "title":
+			return str(GameData.RESEARCH[k]["reward_text"]).get_slice(" + ", 0).trim_prefix("Title: ")
+	return ""
+
+
+func _apply_rewards() -> void:
+	immune_slow = research["rencha"]["claimed"]
+	immune_poison = research["ivina"]["claimed"]
+	speed_perk = 1.08 if research["bolten"]["claimed"] else 1.0
+	sealant = research["cybot"]["claimed"]
+
+
+func _clear_status() -> void:
+	poisoned_until = 0.0
+	sick_until = 0.0
+	dim_until = 0.0
+	chunk_until = 0.0
+	_invuln_until = 0.0
+	_slows.clear()
 
 
 func kill_player(reason: String) -> void:
@@ -238,6 +448,7 @@ func _begin_floor() -> void:
 	tasks_done = 0
 	_spotted.clear()
 	slow_factor = 1.0
+	_clear_status()
 	_set_state(State.FLOOR)
 	floor_started.emit(current_map, floor_number)
 	if GameData.LORE.has(current_map):
@@ -252,6 +463,7 @@ func _end_floor() -> void:
 		best_floor = floor_number
 		_save()
 	_set_state(State.RESULTS)
+	heal(2)   # PLACEHOLDER: a little recovery in the elevator between floors
 	floor_number += 1
 	_after(RESULTS_SECONDS, _next_floor)
 
@@ -285,6 +497,9 @@ func _save() -> void:
 	cfg.set_value("player", "owned_decorations", owned["decorations"])
 	for k in loadout:
 		cfg.set_value("loadout", k, loadout[k])
+	for k in research:
+		cfg.set_value("research", k, research[k]["p"])
+		cfg.set_value("research_claimed", k, research[k]["claimed"])
 	cfg.save(SAVE_PATH)
 
 
@@ -300,3 +515,8 @@ func _load() -> void:
 	owned["decorations"] = Array(cfg.get_value("player", "owned_decorations", ["none"]))
 	for k in loadout:
 		loadout[k] = str(cfg.get_value("loadout", k, loadout[k]))
+	for k in research:
+		var p: Array = Array(cfg.get_value("research", k, research[k]["p"]))
+		if p.size() == 4:
+			research[k]["p"] = p
+		research[k]["claimed"] = bool(cfg.get_value("research_claimed", k, false))

@@ -1,31 +1,64 @@
 extends CharacterBody3D
-## The deck's three "Fatal" enemies. All kill instantly on touch.
-##   soria   - hunts the player relentlessly (and faster once panic mode starts). Late floors only.
-##   serrani - wanders until he hears noise (sprinting, repairing), then runs to where it came from.
-##   surrena - hides inside the walls, then bursts out when the player is close.
-##   rencha  - a "Stalk" enemy: follows at a distance, never kills, but once it sees you the whole floor slows you.
-## "Healthiest player" targeting for Soria needs multiplayer; solo, the player is always the target.
+## The Corruptions (mutated characters covered in Sonium, red glowing eyes). Stats come from GameData.CORRUPTIONS.
+##   Fatal     sonia    hunts relentlessly, faster in panic. Instant kill.
+##             serrani  wanders, runs to any noise he hears. Instant kill.
+##             surrena  hides in a wall (ichor puddle marks the spot), pops out when you are close: shake free (A/D) or die.
+##   Stalk     rencha   follows at a distance; once she has seen you: slowness for the floor + a chase. 2 damage.
+##             cybot    follows Rencha, breaks machines (they leak Sonium), emits lots of light. 2 damage.
+##             ivina    lives on the ceiling, drops on you (thorn minigame), grows poison plants. 2 damage.
+##             bolten   very fast, dashes at you, lights up dark areas. 2 damage.
+##   Friendler dreina   drops Sonium puddles that slow you and dim the screen; hard chunks stick and she chases harder. 1 damage.
+## Interactions from the deck: Cybot + Rencha follow each other (Cybot breaking a machine next to Rencha boosts her),
+## Surrena attacks Sonia if she is close, Serrani and Cybot have staring contests.
+## "Healthiest player" targeting for Sonia needs multiplayer; solo, the player is always the target.
 
 const KILL_RANGE := 1.3
-const SIGHT_RANGE := 14.0
+const FOLLOW_RANGE := 5.0
+const CHASE_SECONDS := 20.0
 
 var kind := "serrani"
-var bounds := Rect2(-18.0, -13.0, 36.0, 26.0)  ## x/z area for wandering
+var bounds := Rect2(-18.0, -13.0, 36.0, 26.0)  ## global x/z area for wandering (set by FloorBuilder)
 
+var _stats: Dictionary
 var _player: Node3D
 var _revealed := true
-var _dash_until := 0.0
-var _heard_pos := Vector3.ZERO
-var _heard_until := 0.0
-var _wander := Vector3.ZERO
+var _home := Vector3.ZERO
+var _stun_until := 0.0
+var _boost_until := 0.0
+var _hit_cd := 0.0
 var _sight_timer := 0.0
 var _last_seen := -100.0
 var _visual: Node3D
 var _label: Label3D
+var _wander := Vector3.ZERO
+
+var _chase_until := 0.0
+var _was_chasing := false
+var _hurt_in_chase := false
+var _follow_time := 0.0
+
+var _heard_pos := Vector3.ZERO
+var _heard_until := 0.0
+var _was_hearing := false
+
+var _grabbing := false
+var _plant_timer := 8.0
+var _plants: Array = []
+var _drop_timer := 3.0
+var _break_cd := 10.0
+var _ivina_cool := 0.0
+var _on_ceiling := true
+
+var _inited := false
+var _dash_end := 0.0
+var _stare_with: Node = null
+var _stare_until := 0.0
+var _next_stare := 30.0
 
 
 func _ready() -> void:
 	add_to_group("corruption")
+	_stats = GameData.CORRUPTIONS[kind]
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.4
@@ -38,7 +71,7 @@ func _ready() -> void:
 	add_child(_visual)
 	_visual.add_child(CharacterModel.build(kind))
 	_label = Label3D.new()
-	_label.text = kind.capitalize()
+	_label.text = _stats["name"]
 	_label.position.y = 2.5
 	_label.font_size = 36
 	_label.pixel_size = 0.01
@@ -47,8 +80,18 @@ func _ready() -> void:
 	_visual.add_child(_label)
 	FloorBuilder.map_marker(_visual, Color(1.0, 0.1, 0.1), 1.1)
 
-	_revealed = kind != "surrena"
-	_visual.visible = _revealed
+	# Cybot and Bolten give off lots of light (deck: "can emit lots of light, making them more visible")
+	if kind == "cybot" or kind == "bolten":
+		var lamp := OmniLight3D.new()
+		lamp.position.y = 1.8
+		lamp.omni_range = 11.0 if kind == "cybot" else 8.0
+		lamp.light_energy = 2.2
+		lamp.light_color = Color(1.0, 0.95, 0.75) if kind == "cybot" else Color(1.0, 0.85, 0.3)
+		_visual.add_child(lamp)
+
+	if kind == "surrena":
+		_revealed = false
+		_visual.visible = false
 	_pick_wander()
 
 
@@ -56,65 +99,480 @@ func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
 
 
+## --- public hooks used by other Corruptions and the minigames --------------------------------
+
+func stun(seconds: float) -> void:
+	_stun_until = _now() + seconds
+
+
+func boost(seconds: float) -> void:
+	_boost_until = _now() + seconds
+
+
+func begin_stare(other: Node) -> void:
+	_stare_with = other
+	_stare_until = 0.0
+
+
+func is_staring() -> bool:
+	return _stare_with != null
+
+
+func minigame_result(success: bool) -> void:
+	match kind:
+		"surrena":
+			_grabbing = false
+			if success:
+				RoundManager.research_event("surrena", "shake_free")
+				RoundManager.grant_invulnerability(2.0)
+				RoundManager.notice.emit("You shook free of Surrena!")
+				stun(3.0)
+				_hide_in_wall()
+			else:
+				RoundManager.kill_player("Caught by Surrena")
+		"ivina":
+			if success:
+				RoundManager.research_event("ivina", "thorns_ok")
+				RoundManager.notice.emit("You dodged Ivina's thorns!")
+			else:
+				RoundManager.damage(int(_stats["damage"]), "Ivina's thorns")
+				RoundManager.poison()
+			_ivina_cool = 25.0
+			_enter_ceiling()
+
+
+## --- main loop ---------------------------------------------------------------------------------
+
 func _physics_process(delta: float) -> void:
+	if not _inited:
+		# first frame: the spawner has placed us, so remember where "home" is
+		_inited = true
+		_home = global_position
+		if kind == "surrena":
+			_make_ichor_puddle()
+		elif kind == "ivina":
+			_enter_ceiling()
 	if _player == null:
 		_player = get_tree().get_first_node_in_group("player") as Node3D
 		if _player == null:
 			return
+	if not RoundManager.in_floor():
+		return
+	var now := _now()
 	var to_p := _player.global_position - global_position
 	var dist := Vector2(to_p.x, to_p.z).length()
+	var panic := RoundManager.state == RoundManager.State.PANIC or RoundManager.state == RoundManager.State.RETURN_TO_ELEVATOR
 
 	_sight_timer -= delta
 	if _sight_timer <= 0.0:
 		_sight_timer = 0.25
-		if dist < SIGHT_RANGE and _has_los():
-			if _revealed:
-				if _now() - _last_seen > 15.0:
-					RoundManager.warn_monster(kind)
-				_last_seen = _now()
-			RoundManager.corruption_spotted(get_instance_id())
-			if kind == "rencha":
-				RoundManager.apply_slow()
+		_check_sight(dist)
+	_track_research(delta, dist, now)
 
-	var panic := RoundManager.state == RoundManager.State.PANIC or RoundManager.state == RoundManager.State.RETURN_TO_ELEVATOR
+	var stunned := now < _stun_until
 	var target := global_position
 	var speed := 0.0
-	match kind:
-		"soria":
-			target = _player.global_position
-			speed = 3.2 * (1.4 if panic else 1.0)
-		"serrani":
-			if float(_player.call("current_noise")) > dist:
-				_heard_pos = _player.global_position
-				_heard_until = _now() + 6.0
-			if _now() < _heard_until:
-				target = _heard_pos
-				speed = 5.0
-			else:
-				target = _wander_target()
-				speed = 1.8
-		"rencha":
-			if dist > 7.5:
-				target = _player.global_position
-				speed = 3.5
-			elif dist < 5.0:
-				target = global_position - to_p.normalized() * 3.0
-				speed = 2.5
-		"surrena":
-			if not _revealed:
-				if dist < 7.0 and _has_los():
-					_revealed = true
-					_visual.visible = true
-					_dash_until = _now() + 3.0
-					_last_seen = _now()
-					RoundManager.warn_monster(kind)
-			else:
-				target = _player.global_position
-				speed = 9.0 if _now() < _dash_until else 3.0
+	var mult := 1.5 if now < _boost_until else 1.0
 
-	_move_toward(target, speed, delta)
-	if _revealed and kind != "rencha" and dist < KILL_RANGE:
-		RoundManager.kill_player("Caught by %s" % kind.capitalize())
+	if not stunned and not _grabbing and RoundManager.minigame_active == false:
+		match kind:
+			"sonia":
+				target = _sonia_target()
+				speed = float(_stats["speed"]) * (1.4 if panic else 1.0)
+			"serrani":
+				var r := _serrani(dist, now)
+				target = r[0]
+				speed = r[1]
+			"surrena":
+				var r := _surrena(dist, now)
+				target = r[0]
+				speed = r[1]
+			"rencha":
+				var r := _rencha(dist, to_p, now)
+				target = r[0]
+				speed = r[1]
+			"cybot":
+				var r := _cybot(dist, delta, now)
+				target = r[0]
+				speed = r[1]
+			"ivina":
+				_ivina(dist, delta, now)
+			"bolten":
+				var r := _bolten(dist, now)
+				target = r[0]
+				speed = r[1]
+			"dreina":
+				var r := _dreina(dist, delta, now)
+				target = r[0]
+				speed = r[1]
+	_stare_update(dist, now)
+	if _stare_with != null and not stunned:
+		var r := _stare_move()
+		target = r[0]
+		speed = r[1]
+
+	if kind != "ivina" or not _on_ceiling:
+		_move_toward(target, speed * mult, delta)
+
+	# contact
+	if _revealed and not stunned and not _grabbing and not (kind == "ivina") and dist < KILL_RANGE and absf(to_p.y) < 2.0:
+		_contact()
+
+
+func _contact() -> void:
+	var dmg: int = int(_stats["damage"])
+	if kind == "surrena":
+		if not _grabbing and RoundManager.request_minigame("shake", self, {}):
+			_grabbing = true
+		return
+	if dmg >= 999:
+		RoundManager.kill_player("Caught by %s" % _stats["name"])
+		return
+	if kind == "rencha" and _now() >= _chase_until:
+		return   # she only hits while chasing
+	var now := _now()
+	if now < _hit_cd:
+		return
+	_hit_cd = now + 1.6
+	_hurt_in_chase = true
+	RoundManager.damage(dmg, _stats["name"])
+	stun(1.2 if kind != "bolten" else 1.8)   # recoil, so you get a moment to run
+
+
+## --- sight and research ------------------------------------------------------------------------
+
+func _check_sight(dist: float) -> void:
+	var sees: bool
+	if kind == "ivina":
+		sees = dist < float(_stats["sight"])
+	else:
+		sees = _revealed and dist < float(_stats["sight"]) and _has_los()
+	if not sees:
+		return
+	var now := _now()
+	if now - _last_seen > 15.0:
+		RoundManager.warn_monster(kind)
+		RoundManager.research_event(kind, "found")
+	_last_seen = now
+	RoundManager.corruption_spotted(get_instance_id())
+	match kind:
+		"rencha":
+			RoundManager.apply_slow()
+			if now >= _chase_until:
+				_chase_until = now + CHASE_SECONDS
+		"bolten", "cybot", "dreina":
+			if now >= _chase_until:
+				_chase_until = now + (12.0 if kind == "bolten" else CHASE_SECONDS)
+
+
+func _is_chasing(dist: float) -> bool:
+	var now := _now()
+	match kind:
+		"sonia":
+			return dist < 25.0
+		"serrani":
+			return now < _heard_until and dist < 25.0
+		"surrena":
+			return _revealed and not _grabbing
+		"ivina":
+			return false
+	return now < _chase_until
+
+
+func _track_research(delta: float, dist: float, now: float) -> void:
+	# stalking: within 5 m for a while without leaving
+	if dist < FOLLOW_RANGE and _revealed:
+		_follow_time += delta
+		RoundManager.research_event(kind, "follow", _follow_time, true)
+	else:
+		_follow_time = 0.0
+	var chasing := _is_chasing(dist)
+	if chasing:
+		RoundManager.research_event(kind, "chased", delta)
+		if kind == "rencha" and RoundManager.slow_factor < 1.0:
+			RoundManager.research_event(kind, "chased_slowed", delta)
+		if kind == "sonia" and not _was_chasing:
+			RoundManager.research_event(kind, "chosen")   # solo stand-in for "chosen over another person"
+	if kind == "bolten" and _was_chasing and not chasing and not _hurt_in_chase:
+		RoundManager.research_event(kind, "survive_chase")
+	if chasing and not _was_chasing:
+		_hurt_in_chase = false
+	_was_chasing = chasing
+
+
+## --- per-kind behaviour: each returns [target position, speed] ----------------------------------
+
+func _sonia_target() -> Vector3:
+	return _player.global_position
+
+
+func _serrani(dist: float, now: float) -> Array:
+	var hear: float = minf(float(_player.call("current_noise")), float(_stats["hearing"]))
+	if hear > dist:
+		_heard_pos = _player.global_position
+		_heard_until = now + 6.0
+		if not _was_hearing:
+			RoundManager.research_event("serrani", "heard")
+		_was_hearing = true
+	elif now >= _heard_until:
+		_was_hearing = false
+	if now < _heard_until:
+		return [_heard_pos, 5.0]
+	return [_wander_target(), float(_stats["speed"])]
+
+
+func _surrena(dist: float, now: float) -> Array:
+	# aggressive when Sonia is close: pop out of the wall and stun her
+	var sonia := _nearest("sonia", 14.0)
+	if sonia != null:
+		if not _revealed:
+			_reveal(now)
+		if sonia.global_position.distance_to(global_position) < 1.8:
+			sonia.call("stun", 4.0)
+			_hide_in_wall()
+			return [global_position, 0.0]
+		return [sonia.global_position, 7.0]
+	if not _revealed:
+		if dist < float(_stats["sight"]) and _has_los():   # solo: the player is always "alone"
+			_reveal(now)
+			RoundManager.warn_monster(kind)
+		return [global_position, 0.0]
+	return [_player.global_position, 9.0 if now < _dash_end else 3.0]
+
+
+func _reveal(now: float) -> void:
+	_revealed = true
+	_visual.visible = true
+	_dash_end = now + 3.0
+	_last_seen = now
+
+
+func _hide_in_wall() -> void:
+	_revealed = false
+	_visual.visible = false
+	global_position = _home
+
+
+func _rencha(dist: float, to_p: Vector3, now: float) -> Array:
+	var chasing := now < _chase_until
+	if chasing:
+		return [_player.global_position, float(_stats["speed"])]
+	if dist > 7.5:
+		return [_player.global_position, 3.5]
+	if dist < 5.0:
+		return [global_position - to_p.normalized() * 3.0, 2.5]
+	return [global_position, 0.0]
+
+
+func _cybot(dist: float, delta: float, now: float) -> Array:
+	if now < _chase_until:
+		return [_player.global_position, float(_stats["speed"])]
+	_break_cd -= delta
+	var rencha := _nearest("rencha", 200.0)
+	var machine := _machine_target()
+	if machine != null and _break_cd <= 0.0:
+		var md := global_position.distance_to(machine.global_position)
+		if md < 2.2:
+			machine.call("break_machine")
+			_break_cd = 25.0
+			if _player.global_position.distance_to(machine.global_position) < 14.0:
+				RoundManager.research_event("cybot", "saw_break")
+			if rencha != null and rencha.global_position.distance_to(global_position) < 7.0:
+				rencha.call("boost", 8.0)   # deck: Cybot breaking a machine next to Rencha gives her a speed boost
+			return [global_position, 0.0]
+		return [machine.global_position, 2.6]
+	if rencha != null and rencha.global_position.distance_to(global_position) > 3.5:
+		return [rencha.global_position, 3.0]   # follows Rencha
+	return [_wander_target(), 1.8]
+
+
+func _machine_target() -> Node3D:
+	var best: Node3D = null
+	var best_d := 1e9
+	for m in get_tree().get_nodes_in_group("machines"):
+		if bool(m.get("done")) or bool(m.get("broken")):
+			continue
+		var d := global_position.distance_to((m as Node3D).global_position)
+		if d < best_d:
+			best_d = d
+			best = m
+	return best
+
+
+func _ivina(dist: float, delta: float, now: float) -> void:
+	_ivina_cool = maxf(0.0, _ivina_cool - delta)
+	# grow poison plants around herself
+	_plant_timer -= delta
+	if _plant_timer <= 0.0:
+		_plant_timer = 14.0
+		_grow_plant()
+	if _on_ceiling and _ivina_cool <= 0.0 and dist < 4.5 and not RoundManager.minigame_active:
+		# she drops from the ceiling right above you
+		global_position = Vector3(_player.global_position.x, 2.2, _player.global_position.z)
+		_on_ceiling = false
+		_visual.rotation.z = 0.0
+		if RoundManager.request_minigame("thorns", self, {}):
+			RoundManager.warn_monster(kind)
+		else:
+			_enter_ceiling()
+
+
+func _grow_plant() -> void:
+	if _plants.size() >= 6:
+		var old: Node = _plants.pop_front()
+		if is_instance_valid(old):
+			old.queue_free()
+	var plant := Node3D.new()
+	plant.set_script(load("res://scripts/hazard.gd"))
+	plant.set("type", "plant")
+	var spot := Vector3(
+		clampf(_home.x + randf_range(-10.0, 10.0), bounds.position.x, bounds.end.x), 0.0,
+		clampf(_home.z + randf_range(-10.0, 10.0), bounds.position.y, bounds.end.y))
+	get_parent().add_child(plant)
+	plant.global_position = spot
+	_plants.append(plant)
+
+
+func _enter_ceiling() -> void:
+	_on_ceiling = true
+	global_position = Vector3(_home.x, 4.9, _home.z)
+	velocity = Vector3.ZERO
+	_visual.rotation.z = PI   # hanging upside down
+
+
+func _bolten(dist: float, now: float) -> Array:
+	if now < _chase_until:
+		return [_player.global_position, float(_stats["speed"])]
+	return [_wander_target(), 4.5]
+
+
+func _dreina(dist: float, delta: float, now: float) -> Array:
+	_drop_timer -= delta
+	if _drop_timer <= 0.0 and dist < 30.0:
+		_drop_timer = 3.5
+		_drop_puddle()
+	var chunked := RoundManager.is_chunked()
+	if chunked:
+		return [_player.global_position, float(_stats["speed"]) * 1.5]
+	if now < _chase_until or dist < 15.0:
+		return [_player.global_position, float(_stats["speed"])]
+	return [_wander_target(), 2.0]
+
+
+func _drop_puddle() -> void:
+	var puddle := Node3D.new()
+	puddle.set_script(load("res://scripts/hazard.gd"))
+	# occasionally she drops a hard chunk of herself into the puddle
+	puddle.set("type", "hard" if randf() < 0.25 else "puddle")
+	get_parent().add_child(puddle)
+	puddle.global_position = Vector3(global_position.x, 0.0, global_position.z)
+
+
+## --- Serrani <-> Cybot staring contests (deck: "Corruption Basics 3") ---------------------------
+
+func _stare_update(dist: float, now: float) -> void:
+	# Serrani starts a contest now and then if Cybot is on the floor and you are not close
+	if kind == "serrani" and _stare_with == null and now >= _next_stare and dist > 14.0:
+		var cy := _nearest("cybot", 200.0)
+		if cy != null and not bool(cy.call("is_staring")):
+			_stare_with = cy
+			_stare_until = 0.0
+			cy.call("begin_stare", self)
+	if _stare_with == null:
+		return
+	if not is_instance_valid(_stare_with):
+		_stare_with = null
+		return
+	var other_d := global_position.distance_to((_stare_with as Node3D).global_position)
+	if _stare_until == 0.0 and other_d < 3.5:
+		_stare_until = now + 30.0
+		_stare_with.set("_stare_until", now + 30.0)
+	# interrupted: you get close or make noise near them -> both get a speed boost
+	var noisy := float(_player.call("current_noise")) > dist
+	if dist < 6.0 or (noisy and dist < 20.0):
+		boost(15.0)
+		_stare_with.call("boost", 15.0)
+		_end_stare()
+	elif _stare_until > 0.0 and now >= _stare_until:
+		_end_stare()   # uninterrupted: you got about half a minute of peace
+
+
+func _end_stare() -> void:
+	var other := _stare_with
+	_stare_with = null
+	_stare_until = 0.0
+	_next_stare = _now() + 120.0
+	if other != null and is_instance_valid(other) and other.get("_stare_with") != null:
+		other.set("_stare_with", null)
+		other.set("_stare_until", 0.0)
+
+
+func _stare_move() -> Array:
+	if not is_instance_valid(_stare_with):
+		return [global_position, 0.0]
+	var op := (_stare_with as Node3D).global_position
+	if _stare_until > 0.0:
+		look_at(Vector3(op.x, global_position.y, op.z), Vector3.UP)
+		return [global_position, 0.0]
+	return [op, 2.5]
+
+
+## --- helpers -------------------------------------------------------------------------------
+
+func _nearest(other_kind: String, max_dist: float) -> Node3D:
+	var best: Node3D = null
+	var best_d := max_dist
+	for c in get_tree().get_nodes_in_group("corruption"):
+		if c == self or c.get("kind") != other_kind:
+			continue
+		var d := global_position.distance_to((c as Node3D).global_position)
+		if d < best_d:
+			best_d = d
+			best = c
+	return best
+
+
+func _make_ichor_puddle() -> void:
+	# an ichor puddle on the wall warns that Surrena lies inside (deck: "Corruption Basics 2")
+	var dl := global_position.x - bounds.position.x
+	var dr := bounds.end.x - global_position.x
+	var dz := bounds.end.y - global_position.z
+	var pos := global_position
+	var rot := 0.0
+	if dz <= dl and dz <= dr:
+		pos = Vector3(global_position.x, 1.3, bounds.end.y + 1.45)
+		rot = PI                    # wall at +z faces -z
+	elif dl < dr:
+		pos = Vector3(bounds.position.x - 1.45, 1.3, global_position.z)
+		rot = -PI / 2.0             # wall at -x faces +x
+	else:
+		pos = Vector3(bounds.end.x + 1.45, 1.3, global_position.z)
+		rot = PI / 2.0
+	var quad := QuadMesh.new()
+	quad.size = Vector2(1.7, 1.2)
+	var m := MeshInstance3D.new()
+	m.mesh = quad
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.25, 0.0, 0.35)
+	mat.emission_enabled = true
+	mat.emission = Color(0.4, 0.0, 0.5)
+	mat.emission_energy_multiplier = 0.6
+	mat.metallic = 0.5
+	mat.roughness = 0.1
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.material_override = mat
+	m.top_level = true
+	add_child(m)
+	m.global_position = pos
+	m.rotation.y = rot
+	# a darker drip below it
+	var drip := MeshInstance3D.new()
+	var dq := QuadMesh.new()
+	dq.size = Vector2(0.35, 0.8)
+	drip.mesh = dq
+	drip.material_override = mat
+	drip.position = Vector3(0.2, -0.9, 0.001)
+	m.add_child(drip)
 
 
 func _wander_target() -> Vector3:
