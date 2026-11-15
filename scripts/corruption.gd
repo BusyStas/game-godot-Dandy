@@ -54,6 +54,8 @@ var _dash_end := 0.0
 var _stare_with: Node = null
 var _stare_until := 0.0
 var _next_stare := 30.0
+var _in_space := false
+var _mound: MeshInstance3D
 
 
 func _ready() -> void:
@@ -92,6 +94,17 @@ func _ready() -> void:
 	if kind == "surrena":
 		_revealed = false
 		_visual.visible = false
+	elif kind == "shovelina":
+		_mound = MeshInstance3D.new()   # a dirt mound shows where she is digging
+		var mm := SphereMesh.new()
+		mm.radius = 0.5
+		mm.height = 0.5
+		_mound.mesh = mm
+		var dirt := StandardMaterial3D.new()
+		dirt.albedo_color = Color(0.25, 0.15, 0.08)
+		_mound.material_override = dirt
+		add_child(_mound)
+		_surface(false)
 	_pick_wander()
 
 
@@ -139,6 +152,29 @@ func minigame_result(success: bool) -> void:
 				RoundManager.poison()
 			_ivina_cool = 25.0
 			_enter_ceiling()
+		"shovelina":
+			_grabbing = false
+			if success:
+				RoundManager.research_event("shovelina", "shake_free")
+				RoundManager.grant_invulnerability(2.0)
+				RoundManager.notice.emit("You kicked free of Shovelina!")
+			else:
+				RoundManager.damage(int(_stats["damage"]), "Shovelina")
+			stun(3.0)
+			_chase_until = 0.0
+			_surface(false)
+		"minchei":
+			_grabbing = false
+			if success:
+				RoundManager.research_event("minchei", "drag_escape")
+				RoundManager.grant_invulnerability(2.0)
+				RoundManager.notice.emit("You escaped Minchei - and now she is mad!")
+				stun(2.5)
+				boost(10.0)   # deck: "She gets mad if you run away"
+				_chase_until = _now() + float(_stats["detect_time"])
+			else:
+				_drag_player()
+				stun(3.0)
 
 
 ## --- main loop ---------------------------------------------------------------------------------
@@ -205,6 +241,18 @@ func _physics_process(delta: float) -> void:
 				var r := _dreina(dist, delta, now)
 				target = r[0]
 				speed = r[1]
+			"shovelina":
+				var r := _shovelina(dist, now)
+				target = r[0]
+				speed = r[1]
+			"limlem":
+				var r := _limlem(dist, now)
+				target = r[0]
+				speed = r[1]
+			"minchei":
+				var r := _minchei(dist, now)
+				target = r[0]
+				speed = r[1]
 	_stare_update(dist, now)
 	if _stare_with != null and not stunned:
 		var r := _stare_move()
@@ -225,6 +273,14 @@ func _contact() -> void:
 		if not _grabbing and RoundManager.request_minigame("shake", self, {}):
 			_grabbing = true
 		return
+	if kind == "shovelina":
+		if not _grabbing and RoundManager.request_minigame("shake", self, {"title": "SHOVELINA HAS YOUR LEGS!", "presses": 12}):
+			_grabbing = true
+		return
+	if kind == "minchei":
+		if not _grabbing and RoundManager.request_minigame("drag", self, {}):
+			_grabbing = true
+		return
 	if dmg >= 999:
 		RoundManager.kill_player("Caught by %s" % _stats["name"])
 		return
@@ -243,7 +299,7 @@ func _contact() -> void:
 
 func _check_sight(dist: float) -> void:
 	var sees: bool
-	if kind == "ivina":
+	if kind == "ivina" or kind == "shovelina":
 		sees = dist < float(_stats["sight"])
 	else:
 		sees = _revealed and dist < float(_stats["sight"]) and _has_los()
@@ -260,9 +316,9 @@ func _check_sight(dist: float) -> void:
 			RoundManager.apply_slow()
 			if now >= _chase_until:
 				_chase_until = now + CHASE_SECONDS
-		"bolten", "cybot", "dreina":
+		"bolten", "cybot", "dreina", "shovelina", "minchei":
 			if now >= _chase_until:
-				_chase_until = now + (12.0 if kind == "bolten" else CHASE_SECONDS)
+				_chase_until = now + float(_stats["detect_time"])   # deck: detection time = how long it keeps chasing after losing you
 
 
 func _is_chasing(dist: float) -> bool:
@@ -457,6 +513,70 @@ func _dreina(dist: float, delta: float, now: float) -> Array:
 	if now < _chase_until or dist < 15.0:
 		return [_player.global_position, float(_stats["speed"])]
 	return [_wander_target(), 2.0]
+
+
+func _surface(show: bool) -> void:
+	_revealed = show
+	_visual.visible = show
+	if _mound != null:
+		_mound.visible = not show
+
+
+## Shovelina digs under the ground toward noise and anyone near, then pops up to grab your legs.
+func _shovelina(dist: float, now: float) -> Array:
+	var hear: float = minf(float(_player.call("current_noise")), float(_stats["hearing"]))
+	if hear > dist and now >= _chase_until:
+		_chase_until = now + 4.0
+	if _revealed and dist > 7.5:
+		_surface(false)
+	elif not _revealed and dist < 5.5:
+		_surface(true)
+	if now < _chase_until:
+		return [_player.global_position, float(_stats["speed"])]
+	return [_wander_target(), 2.0]
+
+
+## Lim & Lem sit in one spot and punish anyone who invades their space.
+func _limlem(dist: float, now: float) -> Array:
+	if _in_space and dist > 6.5:
+		_in_space = false
+		if not _hurt_in_chase:
+			RoundManager.research_event("limlem", "space_escape")
+	if dist < 3.2:
+		_in_space = true
+		_chase_until = now + 1.0
+	var from_home := Vector2(global_position.x - _home.x, global_position.z - _home.z).length()
+	if now < _chase_until and from_home < 7.0:
+		return [_player.global_position, float(_stats["speed"])]
+	return [_home, 3.0]
+
+
+## Minchei is blind: she roams, feels for noise and anything close, and drags it to the other Corruptions.
+func _minchei(dist: float, now: float) -> Array:
+	var hear: float = minf(float(_player.call("current_noise")), float(_stats["hearing"]))
+	if hear > dist:
+		_heard_pos = _player.global_position
+		_heard_until = now + 5.0
+	if now < _chase_until:
+		return [_player.global_position, float(_stats["speed"]) + 0.6]
+	if now < _heard_until:
+		return [_heard_pos, float(_stats["speed"])]
+	return [_wander_target(), 2.0]
+
+
+## A failed escape: she drags you next to another Corruption (a Fatal if one is around).
+func _drag_player() -> void:
+	var best: Node3D = null
+	for c in get_tree().get_nodes_in_group("corruption"):
+		if c == self or not (c is Node3D):
+			continue
+		var cls: String = GameData.CORRUPTIONS[c.get("kind")]["cls"]
+		if best == null or (cls == "fatal" and GameData.CORRUPTIONS[best.get("kind")]["cls"] != "fatal"):
+			best = c
+	RoundManager.damage(int(_stats["damage"]), "Minchei")
+	if best != null:
+		_player.global_position = best.global_position + Vector3(1.8, 0.2, 0.0)
+		RoundManager.notice.emit("Minchei dragged you to %s!" % GameData.CORRUPTIONS[best.get("kind")]["name"])
 
 
 func _drop_puddle() -> void:

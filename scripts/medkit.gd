@@ -52,6 +52,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		RoundManager.make_sick(15.0)
 		RoundManager.notice.emit("The medkit was poisoned! You feel ill.")
 	else:
-		RoundManager.heal(2)
-		RoundManager.notice.emit("Medkit: +2 HP")
+		RoundManager.heal(1)
+		RoundManager.notice.emit("Medkit: +1 HP")
 	queue_free()

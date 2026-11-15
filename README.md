@@ -38,8 +38,9 @@ Keep the `*.gd.uid` files committed next to their scripts.
 
 ## Corruptions, health and research (deck update 2026-11-15)
 - Game name is **Sonia's Expeditions** now. Eight Corruptions (Sonia, Serrani, Surrena, Rencha, Cybot 1.2.7, Ivina, Bolten, Dreina), each with its own behaviour; see `.claude/requirements.md` section 13.
-- **Health**: 6 HP (bottom-left). Fatals kill instantly, Stalks deal 2, Dreina 1. **E** next to a medkit heals 2 (Sonia may poison them).
-- **Minigames**: Surrena's grab (mash **A/D**), Ivina's thorns (click the red points).
+- **Health**: 3 HP (bottom-left), no refill between floors. Fatals kill instantly, Stalks deal 2, Friendlers 1. **E** next to a medkit heals 1 (Sonia may poison them).
+- **Minigames**: Surrena's and Shovelina's grabs (mash **A/D**), Minchei's grab (A/D plus **SPACE** in the green zone), Ivina's thorns (click the red points).
+- New Friendlers: Shovelina (digs, grabs legs), Lim & Lem (guard their spot), Minchei (drags you to a Fatal).
 - **Research**: press **R** in the lobby; claim rewards after four tasks per Corruption.
-- By the deck's spawn table only Dreina appears before floor 10. To meet the others, press **PageUp** in the lobby to start deeper (floor 11 = Stalks, floor 21 = Fatals).
+- By the deck's spawn table only Friendlers appear before floor 10. To meet the others, press **PageUp** in the lobby to start deeper (floor 11 = Stalks, floor 21 = Fatals).
 - New scripts: `hazard.gd` (puddles, plants), `medkit.gd`, `minigame.gd`, `research_ui.gd`, `status_hud.gd`.

@@ -68,15 +68,30 @@ const MAP_THEMES := {
 # the deck gives no earlier odds, so these are used at every floor). The deck's other table rows are
 # "WIP", so only Dreina (a Friendler, floor 0) fills the always-available slot for now.
 const CORRUPTIONS := {
-	"sonia": {"name": "Sonia", "cls": "fatal", "speed": 3.2, "sight": 14.0, "hearing": 8.0, "damage": 999, "min_floor": 20, "weight": 1.0},
-	"serrani": {"name": "Serrani", "cls": "fatal", "speed": 1.8, "sight": 12.0, "hearing": 25.0, "damage": 999, "min_floor": 20, "weight": 1.0},
-	"surrena": {"name": "Surrena", "cls": "fatal", "speed": 3.0, "sight": 7.0, "hearing": 6.0, "damage": 999, "min_floor": 20, "weight": 1.0},
-	"rencha": {"name": "Rencha", "cls": "stalk", "speed": 3.8, "sight": 14.0, "hearing": 10.0, "damage": 2, "min_floor": 10, "weight": 1.5},
-	"cybot": {"name": "Cybot 1.2.7", "cls": "stalk", "speed": 3.0, "sight": 12.0, "hearing": 14.0, "damage": 2, "min_floor": 10, "weight": 1.5},
-	"ivina": {"name": "Ivina", "cls": "stalk", "speed": 2.5, "sight": 10.0, "hearing": 8.0, "damage": 2, "min_floor": 10, "weight": 1.5},
-	"bolten": {"name": "Bolten", "cls": "stalk", "speed": 8.0, "sight": 16.0, "hearing": 12.0, "damage": 2, "min_floor": 10, "weight": 1.5},
-	"dreina": {"name": "Dreina", "cls": "friendler", "speed": 3.5, "sight": 12.0, "hearing": 10.0, "damage": 1, "min_floor": 0, "weight": 4.55},
+	"sonia": {"name": "Sonia", "cls": "fatal", "speed": 3.2, "sight": 14.0, "hearing": 8.0, "detect_time": 10.0, "damage": 999, "min_floor": 20, "weight": 1.0},
+	"serrani": {"name": "Serrani", "cls": "fatal", "speed": 1.8, "sight": 12.0, "hearing": 25.0, "detect_time": 6.0, "damage": 999, "min_floor": 20, "weight": 1.0},
+	"surrena": {"name": "Surrena", "cls": "fatal", "speed": 3.0, "sight": 7.0, "hearing": 6.0, "detect_time": 5.0, "damage": 999, "min_floor": 20, "weight": 1.0},
+	"rencha": {"name": "Rencha", "cls": "stalk", "speed": 3.8, "sight": 14.0, "hearing": 10.0, "detect_time": 20.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"cybot": {"name": "Cybot 1.2.7", "cls": "stalk", "speed": 3.0, "sight": 12.0, "hearing": 14.0, "detect_time": 12.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"ivina": {"name": "Ivina", "cls": "stalk", "speed": 2.5, "sight": 10.0, "hearing": 8.0, "detect_time": 0.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"bolten": {"name": "Bolten", "cls": "stalk", "speed": 8.0, "sight": 16.0, "hearing": 12.0, "detect_time": 10.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"dreina": {"name": "Dreina", "cls": "friendler", "speed": 3.5, "sight": 12.0, "hearing": 10.0, "detect_time": 10.0, "damage": 1, "min_floor": 5, "weight": 2.5},
+	"shovelina": {"name": "Shovelina", "cls": "friendler", "speed": 2.8, "sight": 10.0, "hearing": 12.0, "detect_time": 6.0, "damage": 1, "min_floor": 5, "weight": 2.5},
+	"limlem": {"name": "Lim & Lem", "cls": "friendler", "speed": 6.0, "sight": 12.0, "hearing": 6.0, "detect_time": 0.0, "damage": 1, "min_floor": 5, "weight": 2.5},
+	"minchei": {"name": "Minchei", "cls": "friendler", "speed": 2.6, "sight": 4.0, "hearing": 14.0, "detect_time": 12.0, "damage": 1, "min_floor": 5, "weight": 2.5},
 }
+
+# The deck's table still has unfinished ("WIP") rows. They keep their share of the odds; until they exist, a WIP
+# roll spawns one of the finished Friendlers (any floor) as a stand-in. [min_floor, rarity]
+static func wip_rows() -> Array:
+	var rows: Array = [[10, 2.5], [5, 2.5], [5, 2.5]]
+	for i in 8:
+		rows.append([0, 3.5])
+	for i in 10:
+		rows.append([0, 4.55])
+	return rows
+
+const WIP_STAND_INS := ["dreina", "shovelina", "limlem", "minchei"]
 
 # Short alarm text shown by the monster warning.
 const WARNINGS := {
@@ -88,6 +103,9 @@ const WARNINGS := {
 	"ivina": "IVINA is above you - watch the ceiling!",
 	"bolten": "BOLTEN is coming fast - RUN!",
 	"dreina": "DREINA is chasing you - avoid the Sonium puddles!",
+	"shovelina": "SHOVELINA is digging toward you - keep moving!",
+	"limlem": "LIM & LEM - do not get close to them!",
+	"minchei": "MINCHEI is roaming - she can drag you to a Fatal!",
 }
 
 # --- Research (deck: "Corruption Research"). 4 tasks per Corruption; the first two are the same for
@@ -136,6 +154,24 @@ const RESEARCH := {
 		{"ev": "survive_chase", "goal": 3, "text": "Survive three Bolten chases (get away unhurt)"},
 		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Bolten for half a minute"}],
 		"cost_jars": 0, "reward": "speed", "reward_text": "Perk: +8% move speed"},
+	"shovelina": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Shovelina ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Shovelina for half a minute (within 5 m)"},
+		{"ev": "shake_free", "goal": 3, "text": "Shake free of Shovelina's grasp three times"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Shovelina for half a minute"}],
+		"cost_jars": 0, "reward": "research_speed", "reward_text": "Research quests finish at triple the pace"},
+	"limlem": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Lim & Lem ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Lim & Lem for half a minute (within 5 m)"},
+		{"ev": "space_escape", "goal": 3, "text": "Step into Lim & Lem's space and get away unhurt three times"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Lim & Lem for half a minute"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Personal Space + a guide on keeping your distance"},
+	"minchei": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Minchei ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Minchei for half a minute (within 5 m)"},
+		{"ev": "drag_escape", "goal": 3, "text": "Escape Minchei's grasp three times"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Minchei for half a minute"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Mitten Tamer + a guide on getting away from Minchei"},
 	"dreina": {"tasks": [
 		{"ev": "found", "goal": 10, "text": "Find Corrupted Dreina ten times"},
 		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Dreina for half a minute (within 5 m)"},
@@ -150,17 +186,34 @@ const MASTER_TITLE := "Master Researcher"
 ## Weighted random Corruption kind for a floor, using the deck's spawn table and floor requirements.
 static func pick_corruption(rng: RandomNumberGenerator, floor_number: int) -> String:
 	var kinds: Array = []
+	var weights: Array = []
 	var total := 0.0
 	for k in CORRUPTIONS:
 		if floor_number >= int(CORRUPTIONS[k]["min_floor"]):
 			kinds.append(k)
+			weights.append(float(CORRUPTIONS[k]["weight"]))
 			total += float(CORRUPTIONS[k]["weight"])
+	for row in wip_rows():
+		if floor_number >= int(row[0]):
+			kinds.append("")   # unfinished row: stand-in below
+			weights.append(float(row[1]))
+			total += float(row[1])
 	var roll := rng.randf() * total
-	for k in kinds:
-		roll -= float(CORRUPTIONS[k]["weight"])
+	var chosen := ""
+	for i in kinds.size():
+		roll -= float(weights[i])
 		if roll <= 0.0:
-			return k
-	return kinds[kinds.size() - 1]
+			chosen = kinds[i]
+			break
+	if chosen == "":
+		var options: Array = []
+		for k in WIP_STAND_INS:
+			if floor_number >= int(CORRUPTIONS[k]["min_floor"]):
+				options.append(k)
+		if options.is_empty():
+			options.append("dreina")
+		chosen = options[rng.randi() % options.size()]
+	return chosen
 
 
 # PLACEHOLDER lore text for the two lore floors.

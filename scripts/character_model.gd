@@ -16,6 +16,11 @@ const HEAD_SPEC := {
 	"ivina": [0.0024, 262, 110, 0.0],
 	"bolten": [0.0023, 245, 115, 0.0],
 	"dreina": [0.0023, 265, 110, 0.0],
+	"shovelina": [0.0024, 225, 110, 0.0],
+	"lim": [0.0022, 230, 100, 0.0],
+	"lem": [0.0022, 230, 100, 0.0],
+	"limlem": [0.0022, 230, 100, 0.0],
+	"minchei": [0.0024, 210, 115, 0.0],
 }
 
 # kind -> pixel positions (column, row) of the two eyes in the head texture, used for the red Corruption glow
@@ -28,6 +33,11 @@ const EYES := {
 	"ivina": [Vector2(85, 150), Vector2(138, 150)],
 	"bolten": [Vector2(95, 120), Vector2(140, 104)],
 	"dreina": [Vector2(80, 165), Vector2(140, 165)],
+	"shovelina": [Vector2(75, 150), Vector2(145, 150)],
+	"lim": [Vector2(65, 130), Vector2(135, 130)],
+	"lem": [Vector2(65, 130), Vector2(135, 130)],
+	"limlem": [Vector2(65, 130), Vector2(135, 130)],
+	"minchei": [Vector2(85, 110), Vector2(150, 110)],
 }
 
 # body styles: torso, stripes (or null), belt, pants, arm, cuff, arm stripe, extra
@@ -37,6 +47,10 @@ const BODY_STYLES := {
 	"cybot": {"torso": Color(0.27, 0.27, 0.27), "stripe": null, "belt": Color(0.45, 0.25, 0.05), "pants": Color(0.25, 0.45, 0.9), "arm": Color(0.3, 0.3, 0.3), "cuff": Color(0.8, 0.82, 0.85), "arm_stripe": false},
 	"ivina": {"torso": Color(0.95, 0.95, 0.95), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.95, 0.95, 0.95), "arm": Color(0.95, 0.95, 0.95), "cuff": Color(0.4, 0.65, 0.3), "arm_stripe": true},
 	"dreina": {"torso": Color(0.95, 0.95, 0.95), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.95, 0.95, 0.95), "arm": Color(0.95, 0.95, 0.95), "cuff": Color(0.25, 0.5, 0.95), "arm_stripe": true},
+	"shovelina": {"torso": Color(0.87, 0.4, 0.37), "stripe": null, "belt": Color.BLACK, "pants": Color(0.25, 0.45, 0.85), "arm": Color(0.72, 0.85, 0.7), "cuff": Color.BLACK, "arm_stripe": false},
+	"lim": {"torso": Color(0.15, 0.28, 0.1), "stripe": null, "belt": Color(0.93, 0.93, 0.93), "pants": Color(0.4, 0.0, 0.0), "arm": Color(0.15, 0.28, 0.1), "cuff": Color(0.95, 0.76, 0.18), "arm_stripe": false},
+	"lem": {"torso": Color(0.5, 0.37, 0.0), "stripe": null, "belt": Color(0.93, 0.93, 0.93), "pants": Color(0.03, 0.2, 0.4), "arm": Color(0.5, 0.37, 0.0), "cuff": Color(0.4, 0.65, 0.3), "arm_stripe": false},
+	"minchei": {"torso": Color(0.75, 0.45, 0.6), "stripe": null, "belt": null, "pants": Color(0.72, 0.85, 0.7), "arm": Color(0.55, 0.5, 0.75), "cuff": Color(0.55, 0.5, 0.75), "arm_stripe": false},
 	"bolten": {"torso": Color(0.8, 0.02, 0.02), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.8, 0.02, 0.02), "arm": Color(0.8, 0.02, 0.02), "cuff": Color(1.0, 0.9, 0.1), "arm_stripe": false},
 }
 
@@ -53,6 +67,17 @@ static func style_of(kind: String) -> String:
 ## An enemy: body + head, then black Sonium goo and red glowing eyes ("Corrupted").
 static func build(kind: String) -> Node3D:
 	var root := Node3D.new()
+	if kind == "limlem":
+		# two siblings who never split more than a few inches apart: Lim (lemon) and Lem (lime)
+		for pair in [["lim", -0.36], ["lem", 0.36]]:
+			var one := Node3D.new()
+			one.scale = Vector3(0.82, 0.82, 0.82)
+			one.position.x = pair[1]
+			_body(one, pair[0])
+			_head(one, pair[0])
+			_corrupt(one, pair[0])
+			root.add_child(one)
+		return root
 	_body(root, style_of(kind))
 	_head(root, kind)
 	_corrupt(root, kind)
@@ -213,6 +238,14 @@ static func _texture(kind: String) -> ImageTexture:
 			img = _draw_bolten()
 		"dreina":
 			img = _draw_dreina()
+		"shovelina":
+			img = _draw_shovelina()
+		"lim", "limlem":
+			img = _draw_lim(false)
+		"lem":
+			img = _draw_lim(true)
+		"minchei":
+			img = _draw_minchei()
 		_:
 			img = _draw_rencha()
 	img.generate_mipmaps()
@@ -401,4 +434,38 @@ static func _draw_dreina() -> Image:
 	_eye(img, 80, 168, 20, 17)
 	_eye(img, 142, 168, 20, 17)
 	_poly(img, PackedVector2Array([Vector2(98, 205), Vector2(150, 200), Vector2(124, 226)]), Color.BLACK)
+	return img
+
+
+static func _draw_shovelina() -> Image:
+	var img := _new(220, 260)
+	_rrect(img, 40, 100, 140, 125, 6, Color(0.35, 0.35, 0.35))        # grey head
+	_rrect(img, 36, 0, 148, 108, 4, Color(1.0, 1.0, 0.0))              # tall yellow hat
+	_poly(img, PackedVector2Array([Vector2(50, 60), Vector2(110, 22), Vector2(170, 70), Vector2(160, 78), Vector2(110, 40), Vector2(60, 72)]), Color.BLACK)
+	_eye(img, 75, 150, 13, 13)
+	_ellipse(img, 145, 150, 18, 8, Color.BLACK)                         # winking eye
+	_poly(img, PackedVector2Array([Vector2(85, 178), Vector2(140, 172), Vector2(125, 200), Vector2(100, 198)]), Color.BLACK)
+	return img
+
+
+static func _draw_lim(lime: bool) -> Image:
+	var img := _new(200, 260)
+	var head := Color(0.42, 0.66, 0.3) if lime else Color(0.95, 0.76, 0.18)
+	_ellipse(img, 100, 130, 76, 100, head)
+	_poly(img, PackedVector2Array([Vector2(60, 40), Vector2(100, 0), Vector2(142, 40), Vector2(126, 78), Vector2(74, 78)]), Color(0.15, 0.3, 0.1))
+	_eye(img, 65, 130, 17, 17)
+	_eye(img, 135, 130, 17, 17)
+	_poly(img, PackedVector2Array([Vector2(75, 178), Vector2(125, 172), Vector2(112, 184), Vector2(85, 184)]), Color.BLACK)
+	return img
+
+
+static func _draw_minchei() -> Image:
+	var img := _new(230, 240)
+	var skin := Color(0.55, 0.5, 0.75)
+	_rrect(img, 30, 40, 170, 170, 28, skin)                             # mitten-shaped head
+	_rrect(img, 30, 0, 170, 60, 26, Color(0.62, 0.0, 1.0))             # bright purple hair
+	_poly(img, PackedVector2Array([Vector2(0, 80), Vector2(40, 40), Vector2(60, 70), Vector2(30, 120)]), Color(0.62, 0.0, 1.0))
+	_eye(img, 85, 110, 22, 22)
+	_eye(img, 150, 110, 22, 22)
+	_poly(img, PackedVector2Array([Vector2(75, 160), Vector2(160, 158), Vector2(135, 195), Vector2(100, 195)]), Color.BLACK)
 	return img

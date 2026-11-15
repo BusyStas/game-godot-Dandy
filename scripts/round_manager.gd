@@ -25,7 +25,7 @@ const RESULTS_SECONDS := 5.0
 const MACHINE_REWARD := 10
 const CONTAINER_REWARD := 5
 const CHALLENGE_BONUS := 100         # PLACEHOLDER: reward for beating a shop-character challenge floor
-const MAX_HEALTH := 6                # PLACEHOLDER: the deck gives damage values (stalk 2, others 1) but no health total
+const MAX_HEALTH := 3                # deck: "a max of three health during the entire session of a run"
 const HIT_COOLDOWN := 1.2            # seconds of invulnerability after taking damage
 const SAVE_PATH := "user://save.cfg"
 
@@ -57,6 +57,7 @@ var research := {}
 var immune_slow := false
 var immune_poison := false
 var speed_perk := 1.0
+var research_mult := 1.0  # Shovelina research: quests finish at triple the pace
 var sealant := false      # Cybot research utility: broken machines leak slower
 
 var sonium := 0
@@ -310,7 +311,8 @@ func research_event(kind: String, ev: String, amount := 1.0, set_max := false) -
 		var before: float = rec["p"][i]
 		if before >= goal:
 			return
-		rec["p"][i] = minf(maxf(before, amount) if set_max else before + amount, goal)
+		var amt := amount * research_mult
+		rec["p"][i] = minf(maxf(before, amt) if set_max else before + amt, goal)
 		if rec["p"][i] >= goal:
 			notice.emit("Research: %s - task %d done!" % [GameData.CORRUPTIONS[kind]["name"], i + 1])
 			_save()
@@ -364,6 +366,7 @@ func _apply_rewards() -> void:
 	immune_poison = research["ivina"]["claimed"]
 	speed_perk = 1.08 if research["bolten"]["claimed"] else 1.0
 	sealant = research["cybot"]["claimed"]
+	research_mult = 3.0 if research["shovelina"]["claimed"] else 1.0
 
 
 func _clear_status() -> void:
@@ -433,9 +436,8 @@ func _begin_floor() -> void:
 	task_kind = th["task"]
 	machine_count = clampi(3 + floori(floor_number / 8.0), 3, 6)
 	container_count = 5 if task_kind == "containers" else 2
-	corruption_count = clampi(1 + floori(floor_number / 6.0), 1, 4)
-	if task_kind == "spotted":
-		corruption_count = maxi(corruption_count, 2)
+	# deck: "the first couple floors have two Corruptions, then more"
+	corruption_count = 2 if floor_number <= 2 else clampi(3 + floori((floor_number - 3) / 5.0), 3, 6)
 	if current_map.begins_with("CL"):
 		corruption_count += 1
 	match task_kind:
@@ -463,7 +465,6 @@ func _end_floor() -> void:
 		best_floor = floor_number
 		_save()
 	_set_state(State.RESULTS)
-	heal(2)   # PLACEHOLDER: a little recovery in the elevator between floors
 	floor_number += 1
 	_after(RESULTS_SECONDS, _next_floor)
 

@@ -1,5 +1,5 @@
 
-# get latest here: https://docs.google.com/presentation/d/1SN0quesu7F6EFkFNrn4G97AoUU_rhAo0Q65-qJgfKSs/edit (last synced 2026-11-15, deck modified 18:12 UTC)
+# get latest here: https://docs.google.com/presentation/d/1SN0quesu7F6EFkFNrn4G97AoUU_rhAo0Q65-qJgfKSs/edit (last synced 2026-11-15, deck modified 22:28 UTC)
 # when he changes this presentation - update this file. 
 
 
@@ -235,3 +235,21 @@ Source: the deck re-read on 2026-11-15 (25 slides, modified 2026-11-15 18:12 UTC
   - PLACEHOLDERS: **1 jar = 10 Sonium** (the deck says "explained later"); tasks 3 of Serrani, Surrena, Cybot, Ivina, Bolten, Dreina are invented; Sonia's "chosen over another person in a chase" counts when she first hunts you solo (needs multiplayer).
   - TBD: "buy any items at the start of the game" for the full-research title (only the title is implemented), perks and guides ("explained later").
 - **R-13.12 Open questions added.** How much health do players have? What do jars of Sonium look like and where do they come from? What do the WIP Corruptions look like? Which Corruptions are boosted before floor 20/30? What do research utilities, perks and guides do?
+
+
+---
+
+## 14. Deck update 2 (2026-11-15, 31 slides): max health 3, detection time, Shovelina, Lim & Lem, Minchei
+
+Source: deck modified 2026-11-15 22:28 UTC. Supersedes the matching items in section 13.
+
+- **R-14.1 Health is 3** ("a max of three health during the entire session of a run"); it no longer refills at the elevator. Medkits heal **1**. Some Corruptions change how damage is dealt.
+- **R-14.2 Detection time** is a new stat: how long a Corruption keeps chasing after you are hidden from its view (`detect_time` in `GameData.CORRUPTIONS`; values are PLACEHOLDERS).
+- **R-14.3 Three new Friendlers** (drawn from the deck art; Corrupted look added):
+  - **Shovelina**: digs under the ground (shown as a dirt mound), follows noise and nearby players, pops up and grabs your legs. Shake-free minigame (A/D, 12 presses) like Surrena, but failure costs 1 damage, not death. Her research makes research quests finish at **triple pace**.
+  - **Lim & Lem**: two fused siblings (lemon and lime heads). They sit in one spot and attack anyone who comes within about 3 m (leash 7 m), then go back. Damage 1.
+  - **Minchei**: blind mitten who roams, feels for noise and anything close. Grab minigame: mash A/D **and** press SPACE when the needle is in the green (2 hits in 7 s). Success: she gets mad (faster chase). Failure: 1 damage and she drags you next to another Corruption (a Fatal if present).
+- **R-14.4 Spawning.** Dreina, Shovelina, Lim & Lem, Minchei: floor 5+, 2.5% each. The table's WIP rows keep their share; PLACEHOLDER: a WIP roll spawns one of the four finished Friendlers. Rows with "Can Always Spawn" are WIP, so **floors 1-4 spawn only Friendlers (via WIP stand-ins and nothing else)** and floor 10+ adds Stalks, floor 20+ Fatals.
+- **R-14.5 Corruptions per floor.** "The first couple floors have two Corruptions, then more": 2 on floors 1-2, then 3 rising to 6 (every 5 floors). PLACEHOLDER numbers.
+- **R-14.6 Research** for the three new kinds uses the same four-task shape (found x10, follow 30 s, a specific task, chased 30 s). Task 3 (shake free x3 / escape Lim & Lem's space x3 / escape Minchei x3) is invented. Dreina's WIP-era rows are gone; the table now names Dreina, Shovelina, Lim & Lem and Minchei.
+- **R-14.7 Open questions.** What happens to damage "changed" by some Corruptions? What do the three "???" Friendlers look like? What do Lim & Lem's and Minchei's research rewards give (placeholders: titles)? Multiplayer behaviours (Minchei "to the other Corruptions", Sonia's target) still need multiplayer.
