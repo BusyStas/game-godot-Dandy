@@ -38,7 +38,8 @@ static func box(parent: Node, pos: Vector3, size: Vector3, color: Color, solid :
 	return root
 
 
-static func label(parent: Node, text: String, pos: Vector3, size := 48, color := Color.WHITE) -> void:
+## billboard=false pins the text to a wall (it faces +Z of its parent) instead of turning to follow the viewer.
+static func label(parent: Node, text: String, pos: Vector3, size := 48, color := Color.WHITE, billboard := true) -> void:
 	var l := Label3D.new()
 	l.text = text
 	l.modulate = color
@@ -46,7 +47,7 @@ static func label(parent: Node, text: String, pos: Vector3, size := 48, color :=
 	l.position = pos
 	l.font_size = size
 	l.pixel_size = 0.01
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED if billboard else BaseMaterial3D.BILLBOARD_DISABLED
 	parent.add_child(l)
 
 
@@ -103,7 +104,7 @@ static func build_elevator_doors(parent: Node, pos: Vector3, width := 3.2, heigh
 	box(root, Vector3(0, 0.03, 0.05), Vector3(width, 0.06, 0.1), Color(0.3, 0.3, 0.32), false)  # threshold
 	if indicator:
 		box(root, Vector3(0, height + fw + 0.3, 0), Vector3(1.0, 0.4, 0.14), Color(0.03, 0.03, 0.03), false)
-		label(root, "UP", Vector3(0, height + fw + 0.3, 0.1), 40, Color(0.2, 1.0, 0.3))
+		label(root, "UP", Vector3(0, height + fw + 0.3, 0.09), 40, Color(0.2, 1.0, 0.3), false)
 		# call button panel
 		var px := width / 2.0 + fw + 0.45
 		box(root, Vector3(px, 1.2, 0), Vector3(0.22, 0.5, 0.06), Color(0.2, 0.2, 0.22), false)
@@ -202,7 +203,7 @@ static func build_floor(map_name: String, origin: Vector3, cfg: Dictionary) -> D
 
 	# The elevator you must return to
 	build_elevator_doors(root, Vector3(0, 0, -d / 2.0 + 0.55), 3.2, 3.0, true)
-	label(root, "ELEVATOR", Vector3(0, 4.6, -d / 2.0 + 1.0), 48)
+	label(root, "ELEVATOR", Vector3(0, 4.5, -d / 2.0 + 0.58), 48, Color.WHITE, false)
 	map_marker(root, Color(0.2, 1.0, 0.3), 1.8, 7.0, true).position += Vector3(0, 0, -d / 2.0 + 2.5)
 	var elevator := Area3D.new()
 	elevator.position = Vector3(0, 1.5, -d / 2.0 + 3.0)
