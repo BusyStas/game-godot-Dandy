@@ -22,10 +22,12 @@ var done := false
 
 var _goal := 3.0
 var _light_mat: StandardMaterial3D
+var broken := false         ## Cybot 1.2.7 broke it: progress leaks away slowly
 var _label: Label3D
 
 
 func _ready() -> void:
+	add_to_group("machines")
 	FloorBuilder.map_marker(self, Color(1.0, 0.8, 0.1), 0.9, 7.0, true)
 	_goal = KINDS[kind]["goal"]
 	var body := StaticBody3D.new()
@@ -106,9 +108,20 @@ func _process(delta: float) -> void:
 			if holding:
 				progress += delta * float(p.get("fix_speed"))
 				p.call("make_noise", 8.0)
+	if broken and not done:
+		progress = maxf(0.0, progress - delta * (0.3 if RoundManager.sealant else 0.6))
 	if progress >= _goal:
 		_finish()
 	_update_label()
+
+
+## Called by Cybot 1.2.7.
+func break_machine() -> void:
+	if done or broken:
+		return
+	broken = true
+	_light_mat.albedo_color = Color(1.0, 0.45, 0.0)
+	_light_mat.emission = Color(1.0, 0.45, 0.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -123,6 +136,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _finish() -> void:
 	done = true
+	broken = false
 	_light_mat.albedo_color = Color(0.1, 0.9, 0.2)
 	_light_mat.emission = Color(0.1, 0.9, 0.2)
 	RoundManager.machine_fixed()
@@ -133,7 +147,7 @@ func _update_label() -> void:
 	if done:
 		_label.text = "Fixed"
 		return
-	var title := "%s machine" % kind.capitalize()
+	var title := "%s machine%s" % [kind.capitalize(), " (BROKEN - leaking)" if broken else ""]
 	match kind:
 		"clicker":
 			_label.text = "%s: tap E (%d/%d)" % [title, int(progress), int(_goal)]

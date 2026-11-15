@@ -9,6 +9,9 @@ const SelectionScript := preload("res://scripts/selection_screen.gd")
 const ShopScript := preload("res://scripts/shop_ui.gd")
 const MinimapScript := preload("res://scripts/minimap.gd")
 const WarningScript := preload("res://scripts/warning_overlay.gd")
+const MinigameScript := preload("res://scripts/minigame.gd")
+const StatusScript := preload("res://scripts/status_hud.gd")
+const ResearchScript := preload("res://scripts/research_ui.gd")
 
 const LOBBY_SPAWN := Vector3(0, 0.5, 10)
 const CABIN_ORIGIN := Vector3(100, 0, 0)
@@ -25,6 +28,8 @@ var _floor_root: Node3D
 var _floor_elevator: Area3D
 var _mirror: Node3D
 var _minimap: CanvasLayer
+var _minigame: CanvasLayer
+var _research: CanvasLayer
 var _selection: CanvasLayer
 var _shop: CanvasLayer
 var _shops: Array = []   # [{pos: Vector3, category: String, name: String}]
@@ -73,6 +78,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F:
 			if _near_shop >= 0 and not _ui_open():
 				_open_shop(_near_shop)
+		KEY_R:
+			if RoundManager.state == RoundManager.State.LOBBY:
+				if _research.is_open():
+					_research.close()
+				elif not _ui_open():
+					_research.open()
+					_sync_ui_lock()
+		KEY_PAGEUP:
+			if RoundManager.state == RoundManager.State.LOBBY:
+				RoundManager.start_floor += 5   # debug: start runs deeper to meet later Corruptions
+		KEY_PAGEDOWN:
+			if RoundManager.state == RoundManager.State.LOBBY:
+				RoundManager.start_floor = maxi(1, RoundManager.start_floor - 5)
 		KEY_T:
 			RoundManager.report_task_done()
 		KEY_BACKSPACE:
@@ -82,7 +100,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- UI state ------------------------------------------------------------------
 
 func _ui_open() -> bool:
-	return _selection.is_open() or _shop.is_open()
+	return _selection.is_open() or _shop.is_open() or _minigame.is_open() or _research.is_open()
 
 
 func _sync_ui_lock() -> void:
@@ -226,7 +244,7 @@ func _add_elevators() -> void:
 
 func _add_shops() -> void:
 	var defs := [
-		{"pos": Vector3(-17, 0.75, -2), "size": Vector3(3, 1.5, 6), "color": Color(0.2, 0.5, 0.8), "category": "characters", "name": "Shop 1: Characters (Soria)"},
+		{"pos": Vector3(-17, 0.75, -2), "size": Vector3(3, 1.5, 6), "color": Color(0.2, 0.5, 0.8), "category": "characters", "name": "Shop 1: Characters (Sonia)"},
 		{"pos": Vector3(17, 0.75, -6), "size": Vector3(3, 1.5, 6), "color": Color(0.2, 0.7, 0.4), "category": "skins", "name": "Shop 2: Skins (Serrani)"},
 		{"pos": Vector3(17, 0.75, 4), "size": Vector3(3, 1.5, 6), "color": Color(0.8, 0.5, 0.2), "category": "decorations", "name": "Shop 3: Player Cards"},
 	]
@@ -261,6 +279,14 @@ func _add_ui() -> void:
 	_minimap = MinimapScript.new()
 	add_child(_minimap)
 	add_child(WarningScript.new())
+	add_child(StatusScript.new())
+	_minigame = MinigameScript.new()
+	add_child(_minigame)
+	_minigame.opened.connect(_sync_ui_lock)
+	_minigame.closed.connect(_sync_ui_lock)
+	_research = ResearchScript.new()
+	add_child(_research)
+	_research.closed.connect(_sync_ui_lock)
 
 	_selection = SelectionScript.new()
 	add_child(_selection)
@@ -287,7 +313,9 @@ func _refresh_hud() -> void:
 	var util: Dictionary = GameData.UTILITIES.get(RoundManager.loadout["utility"], GameData.UTILITIES["none"])
 	var lines: Array = [
 		"%s | %s | card: %s | %s" % [ch["name"], skin["name"], deco["name"], util["name"]],
-		"Sonium: %d   Best floor: %d" % [RoundManager.sonium, RoundManager.best_floor],
+		"Sonium: %d   Best floor: %d%s%s" % [RoundManager.sonium, RoundManager.best_floor,
+			("   Start floor: %d" % RoundManager.start_floor) if s == RoundManager.State.LOBBY else "",
+			("   [%s]" % RoundManager.title()) if RoundManager.title() != "" else ""],
 		"State: %s" % RoundManager.State.keys()[s],
 	]
 	if s != RoundManager.State.LOBBY:
@@ -311,7 +339,7 @@ func _refresh_hud() -> void:
 			lines.append("RUN BACK TO THE ELEVATOR! %d s left" % ceili(RoundManager.time_left()))
 	if RoundManager.slow_factor < 1.0:
 		lines.append("Slowed by Rencha for this floor")
-	lines.append("Backspace: return to lobby   F11: fullscreen   X or Ctrl+C: quit")
+	lines.append("Backspace: return to lobby   R: research   PgUp/PgDn: start floor   F11: fullscreen   X or Ctrl+C: quit")
 	_hud.text = "\n".join(lines)
 
 

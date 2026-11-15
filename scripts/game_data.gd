@@ -62,10 +62,111 @@ const MAP_THEMES := {
 	"LR2 Floor": {"floor": Color(0.08, 0.08, 0.1), "prop": Color(0.25, 0.25, 0.3), "style": "rows"},
 }
 
+# --- Corruptions (deck: "Corruption Basics" and "Corruption Spawning") ----------------------
+# cls: fatal (instant kill) | stalk (2 damage) | friendler (1 damage). speed/sight/hearing are in
+# m/s and metres. min_floor and weight come from the deck's spawn table ("odds at or after floor 20";
+# the deck gives no earlier odds, so these are used at every floor). The deck's other table rows are
+# "WIP", so only Dreina (a Friendler, floor 0) fills the always-available slot for now.
+const CORRUPTIONS := {
+	"sonia": {"name": "Sonia", "cls": "fatal", "speed": 3.2, "sight": 14.0, "hearing": 8.0, "damage": 999, "min_floor": 20, "weight": 1.0},
+	"serrani": {"name": "Serrani", "cls": "fatal", "speed": 1.8, "sight": 12.0, "hearing": 25.0, "damage": 999, "min_floor": 20, "weight": 1.0},
+	"surrena": {"name": "Surrena", "cls": "fatal", "speed": 3.0, "sight": 7.0, "hearing": 6.0, "damage": 999, "min_floor": 20, "weight": 1.0},
+	"rencha": {"name": "Rencha", "cls": "stalk", "speed": 3.8, "sight": 14.0, "hearing": 10.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"cybot": {"name": "Cybot 1.2.7", "cls": "stalk", "speed": 3.0, "sight": 12.0, "hearing": 14.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"ivina": {"name": "Ivina", "cls": "stalk", "speed": 2.5, "sight": 10.0, "hearing": 8.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"bolten": {"name": "Bolten", "cls": "stalk", "speed": 8.0, "sight": 16.0, "hearing": 12.0, "damage": 2, "min_floor": 10, "weight": 1.5},
+	"dreina": {"name": "Dreina", "cls": "friendler", "speed": 3.5, "sight": 12.0, "hearing": 10.0, "damage": 1, "min_floor": 0, "weight": 4.55},
+}
+
+# Short alarm text shown by the monster warning.
+const WARNINGS := {
+	"sonia": "SONIA is hunting you - RUN!",
+	"serrani": "SERRANI is close - stop sprinting, stay quiet!",
+	"surrena": "SURRENA burst out of the wall - RUN!",
+	"rencha": "RENCHA has seen you - you are slowed and chased!",
+	"cybot": "CYBOT 1.2.7 is nearby - he breaks machines!",
+	"ivina": "IVINA is above you - watch the ceiling!",
+	"bolten": "BOLTEN is coming fast - RUN!",
+	"dreina": "DREINA is chasing you - avoid the Sonium puddles!",
+}
+
+# --- Research (deck: "Corruption Research"). 4 tasks per Corruption; the first two are the same for
+# all of them, tasks 3 and 4 are specific. Tasks 3 for everyone but Sonia and Rencha are PLACEHOLDERS.
+# ev = the event name tracked in RoundManager.research_event; goal = how many (or seconds).
+const RESEARCH := {
+	"sonia": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Sonia ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Sonia for half a minute (within 5 m)"},
+		{"ev": "chosen", "goal": 1, "text": "Get chosen over another person in a chase"},
+		{"ev": "chased", "goal": 60, "text": "Get chased by Corrupted Sonia for a whole minute"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Sonia Scholar + a guide on dodging Sonia"},
+	"serrani": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Serrani ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Serrani for half a minute (within 5 m)"},
+		{"ev": "heard", "goal": 5, "text": "Get heard by Serrani five times"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Serrani for half a minute"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Noise Whisperer + a guide on staying quiet"},
+	"surrena": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Surrena ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Surrena for half a minute (within 5 m)"},
+		{"ev": "shake_free", "goal": 3, "text": "Shake free of Surrena's grasp three times"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Surrena for half a minute"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Wall Walker + a guide to ichor puddles"},
+	"rencha": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Get spotted by Corrupted Rencha ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Rencha for half a minute (within 5 m)"},
+		{"ev": "chased_slowed", "goal": 30, "text": "Stay in a chase for half a minute while slowed"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Rencha for around half a minute"}],
+		"cost_jars": 5, "reward": "immune_slow", "reward_text": "Immunity to Rencha's slowness"},
+	"cybot": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Cybot ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Cybot for half a minute (within 5 m)"},
+		{"ev": "saw_break", "goal": 3, "text": "Watch Cybot break a machine three times"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Cybot for half a minute"}],
+		"cost_jars": 0, "reward": "utility", "reward_text": "Utility: Machine Sealant (broken machines leak 50% slower)"},
+	"ivina": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Ivina ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Ivina for half a minute (within 5 m)"},
+		{"ev": "thorns_ok", "goal": 3, "text": "Pass Ivina's thorn minigame three times"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Ivina for half a minute"}],
+		"cost_jars": 10, "reward": "immune_poison", "reward_text": "Immunity to Ivina's poison"},
+	"bolten": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Bolten ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Bolten for half a minute (within 5 m)"},
+		{"ev": "survive_chase", "goal": 3, "text": "Survive three Bolten chases (get away unhurt)"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Bolten for half a minute"}],
+		"cost_jars": 0, "reward": "speed", "reward_text": "Perk: +8% move speed"},
+	"dreina": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Dreina ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Dreina for half a minute (within 5 m)"},
+		{"ev": "chunked", "goal": 2, "text": "Get a Sonium chunk stuck on you twice"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Dreina for half a minute"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Puddle Jumper + a guide on Sonium puddles"},
+}
+const JAR_SONIUM := 10   # PLACEHOLDER: the deck says "jars of Sonium (explained later)"; one jar is 10 Sonium here.
+const MASTER_TITLE := "Master Researcher"
+
+
+## Weighted random Corruption kind for a floor, using the deck's spawn table and floor requirements.
+static func pick_corruption(rng: RandomNumberGenerator, floor_number: int) -> String:
+	var kinds: Array = []
+	var total := 0.0
+	for k in CORRUPTIONS:
+		if floor_number >= int(CORRUPTIONS[k]["min_floor"]):
+			kinds.append(k)
+			total += float(CORRUPTIONS[k]["weight"])
+	var roll := rng.randf() * total
+	for k in kinds:
+		roll -= float(CORRUPTIONS[k]["weight"])
+		if roll <= 0.0:
+			return k
+	return kinds[kinds.size() - 1]
+
+
 # PLACEHOLDER lore text for the two lore floors.
 const LORE := {
-	"LR1 Floor": "A torn page: 'Soria's work was meant to heal us. The Incident began on this floor.'",
-	"LR2 Floor": "A scratched note: 'Serrani ran. Surrena looked for him. Nobody came back for Soria.'",
+	"LR1 Floor": "A torn page: 'Sonia's work was meant to heal us. The Incident began on this floor.'",
+	"LR2 Floor": "A scratched note: 'Serrani ran. Surrena looked for him. Nobody came back for Sonia.'",
 }
 
 

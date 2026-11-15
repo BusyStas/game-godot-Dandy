@@ -1,11 +1,11 @@
 
-# get latest here: https://docs.google.com/presentation/d/1SN0quesu7F6EFkFNrn4G97AoUU_rhAo0Q65-qJgfKSs/edit?slide=id.h6abf26ebc7158a13_1_79#slide=id.h6abf26ebc7158a13_1_79
+# get latest here: https://docs.google.com/presentation/d/1SN0quesu7F6EFkFNrn4G97AoUU_rhAo0Q65-qJgfKSs/edit (last synced 2026-11-15, deck modified 18:12 UTC)
 # when he changes this presentation - update this file. 
 
 
-# Requirements — Soria's Expeditions
+# Requirements — Sonia's Expeditions
 
-Source: Google Slides "Soria's Expedition - Game Design: Whole Guide" (owner: Daniel Prikhodko; read 2026-11-11), which supersedes `Game Design - The Whole Guide.pdf` in this folder. The PDF is an older snapshot without the Game Basics, Characters or Corruptions sections.
+Source: Google Slides "Sonia's Expedition - Game Design: Whole Guide" (owner: Daniel Prikhodko; read 2026-11-11), which supersedes `Game Design - The Whole Guide.pdf` in this folder. The PDF is an older snapshot without the Game Basics, Characters or Corruptions sections.
 
 Conventions: **MUST** = stated in the design. **TBD** = the design explicitly defers it ("later"). **ASSUMPTION** = not in the design; a placeholder chosen so work can proceed. IDs are stable so code and issues can reference them.
 
@@ -15,16 +15,16 @@ Target: Godot 4.x, GDScript, multiplayer (see `scripts/round_manager.gd`, `scrip
 
 ## 1. Overview
 
-- **R-1.1** The game is called **Soria's Expeditions** (the repo name `game-godot-dandy` is not the game title).
+- **R-1.1** The game is called **Sonia's Expeditions** (the repo name `game-godot-dandy` is not the game title).
 - **R-1.2** Multiplayer co-op survival game: players ride an elevator to a themed floor, complete tasks, then must return to the elevator before time runs out or die.
-- **R-1.3** The loading screen shows the logo with the "i" in "Soria" drawn as Soria's head, sideways.
+- **R-1.3** The loading screen shows the logo with the "i" in "Sonia" drawn as Sonia's head, sideways.
 - **R-1.4** Currency is **Sonium**, earned in runs and spent in lobby shops.
 
 ## 2. Lobby
 
 - **R-2.1** On first launch the player sees a screen offering **two starting characters** (designs TBD).
 - **R-2.2** The lobby contains: a spawn/starting area, a hallway with **four elevators** and two doors, and three shops:
-  - **Shop 1** — character shop (shopkeeper: Soria)
+  - **Shop 1** — character shop (shopkeeper: Sonia)
   - **Shop 2** — character skin shop (shopkeeper: Serrani)
   - **Shop 3** — player card shop
 - **R-2.3** Entering an elevator starts a short countdown (duration TBD, ASSUMPTION 5 s).
@@ -101,20 +101,20 @@ States, in order:
 
 Three antagonists, all labeled "Fatal", appear in the design. All can **kill a character instantly**.
 
-- **R-6.1 Soria** — shopkeeper of the character shop and the most important character.
+- **R-6.1 Sonia** — shopkeeper of the character shop and the most important character.
   - Appearance: syringe head, human body, a suit with blue/green gradient stripes, blue/green gradient gloves.
   - Story: the **Incident** is all her fault. Overwhelmed by insanity, she haunts the floors and tries to catch the others. In the shop she pretends to be nice, then turns insane.
   - Behavior: **targets the healthiest player** in the run.
 - **R-6.2 Serrani** — shopkeeper of the character skin shop.
-  - Story: worked with Soria during the Incident; when Soria went insane he ran and never turned back, and is overwhelmed by guilt.
+  - Story: worked with Sonia during the Incident; when Sonia went insane he ran and never turned back, and is overwhelmed by guilt.
   - Behavior: hunts the others and **runs toward any noise he hears**.
 - **R-6.3 Surrena** — side/main character.
-  - Story: worked with Serrani and Soria; searched for Serrani and was caught by Soria.
+  - Story: worked with Serrani and Sonia; searched for Serrani and was caught by Sonia.
   - Behavior: **hides inside the walls** and jumps out to kill players who are **alone** and off guard.
 - **R-6.4** Corruptions spawn on the map **depending on the floor and the number of players** in the run (formula TBD).
 - **R-6.5** "Spotted by a Corruption" is a tracked event (gives Sonium, R-7.2, and can be a task, R-5.2). The detection rule (line of sight, range) is TBD.
 - **R-6.6** The deck's "Corruptions" section is **empty** ("a guide on the corruptions, after characters are shown"). Specific Corruption types are TBD.
-- **R-6.7** The two starting characters, character designs, and which characters the shop sells are TBD. Note that Soria's shop sells characters, but the deck doesn't say whether Soria/Serrani/Surrena are themselves playable (they are described as enemies).
+- **R-6.7** The two starting characters, character designs, and which characters the shop sells are TBD. Note that Sonia's shop sells characters, but the deck doesn't say whether Sonia/Serrani/Surrena are themselves playable (they are described as enemies).
 
 ## 7. Economy (Sonium)
 
@@ -165,7 +165,7 @@ Decisions made where the deck was silent. Change any of these by editing `script
 - R-3: full round loop (countdown, selection, 15 s elevator, floor, panic, 90 s return, death if not back, next floor).
 - R-4: all 24 maps with min-floor gating and weighted odds; each has its own palette, prop layout and task type (procedural placeholder geometry).
 - R-5: three task types, **machines**, **containers** (hidden, hold E) and **spotted** (be seen by every Corruption). All five machine kinds exist (regular, hard, treadmill, clicker, search). Machines and containers spawn on every floor and pay Sonium even when not the task.
-- R-6: Soria, Serrani and Surrena behave as described; they kill instantly. Spotting = line of sight within 14 m.
+- R-6: Sonia, Serrani and Surrena behave as described; they kill instantly. Spotting = line of sight within 14 m.
 - R-7: Sonium for machines (10), containers (5) and being spotted (1-2); shops spend it; ownership and loadout are saved.
 - R-8: selection screen, shop windows, HUD, shared task progress readout.
 
@@ -173,13 +173,13 @@ Decisions made where the deck was silent. Change any of these by editing `script
 - Starting characters: Recruit (balanced) and Scout (+15% speed). Shop also sells Engineer (100, fixes 30% faster) and Ghost (250, half the noise). The unchosen starter costs 60.
 - Utilities (all free): Sprint Boots, Lantern, Earplugs. Skins and card decorations are cosmetic with invented prices.
 - Timers: 5 s elevator countdown, 30 s selection, 5 s results.
-- Task counts: machines 3 (+1 per 8 floors, max 6); containers 5; Corruptions 1 (+1 per 6 floors, max 4; spotted floors at least 2; challenge floors +1). Soria only appears from floor 8.
+- Task counts: machines 3 (+1 per 8 floors, max 6); containers 5; Corruptions 1 (+1 per 6 floors, max 4; spotted floors at least 2; challenge floors +1). Sonia only appears from floor 8.
 - Challenge floors (CL1-CL3) give +100 Sonium on completion. Lore floors (LR1-LR2) show a short invented note.
 - Pre-floor-30 odds: the floor-30 table is used at every floor (deck says some maps are higher earlier; not specified which).
 - Corruption AI is simple direct steering (no navmesh); props are kept sparse so they rarely get stuck.
 
 **Not done**
-- **Multiplayer.** Every system is server-authoritative in design but currently runs single-player. It needs decisions (host vs dedicated server, player count, lobby/elevator grouping) and is the largest remaining task. "Healthiest player" targeting for Soria, shared Sonium split on machines and the shared progress bar across players all depend on it.
+- **Multiplayer.** Every system is server-authoritative in design but currently runs single-player. It needs decisions (host vs dedicated server, player count, lobby/elevator grouping) and is the largest remaining task. "Healthiest player" targeting for Sonia, shared Sonium split on machines and the shared progress bar across players all depend on it.
 - Real art, models, animation, sound and music; hand-built maps to replace the procedural ones.
 - Per-map task mixes and Corruption rosters beyond the rules above (the deck's Corruptions section is empty).
 
@@ -189,7 +189,7 @@ Decisions made where the deck was silent. Change any of these by editing `script
 
 The deck now includes drawings. The in-game models follow them (`scripts/character_model.gd`):
 - **Common body (Fatal three):** black suit, two white chest stripes, white belt, grey legs, black arms with a white stripe and blue gradient-cuffed gloves.
-- **Soria:** wide white head, syringe needle on one side, seven rainbow tabs on top, two big ringed eyes, small black mouth.
+- **Sonia:** wide white head, syringe needle on one side, seven rainbow tabs on top, two big ringed eyes, small black mouth.
 - **Serrani:** TV head with a black-to-white frame and blue rim, black screen, two antennas, wide smile.
 - **Surrena:** spiky flame head (red at the top, yellow at the bottom), big eyes, wide black mouth.
 - **Rencha:** wrench head (ring on one end, open jaw on the other), dark-grey torso, light-blue trousers, one arm raised.
@@ -200,3 +200,38 @@ The deck now includes drawings. The in-game models follow them (`scripts/charact
   - **Rencha** (implemented): mutated from fear of failure; stalks the halls. Once it has seen you, you are slowed for the whole floor (placeholder: 0.8x speed). In-game it follows at about 5-7 m and never attacks. Appears from floor 4.
   - **Cybot 1.2.7** (not implemented, deck art is only a placeholder): a cyborg who was Rencha's friend and was forgotten. It can **break machines**, which spill their Sonium and make filling them harder.
 - Surrena's text now says she "lies inside the walls" and jumps out on characters who are alone. This matches the existing implementation.
+
+---
+
+## 13. Deck update 2026-11-15: rename, six new Corruptions, health, minigames, spawning, research
+
+Source: the deck re-read on 2026-11-15 (25 slides, modified 2026-11-15 18:12 UTC). Everything below is implemented in the single-player build unless marked otherwise.
+
+- **R-13.1 Rename.** The game and its shopkeeper are now **Sonia** ("Sonia's Expeditions"), not "Soria". The "i" in Sonia is still her head sideways on the loading screen. All code, UI text and docs were renamed (`soria` -> `sonia`).
+- **R-13.2 Characters (all "Corrupted": covered in Sonium, red glowing eyes).** Drawn as the deck art (`scripts/character_model.gd`):
+  - Fatal: **Sonia**, **Serrani**, **Surrena** (kill instantly).
+  - Stalk: **Rencha**, **Cybot 1.2.7** (top hat, breaks machines, emits lots of light), **Ivina** (leaf head, plants, poison), **Bolten** (lightning head, very fast, lights up dark areas).
+  - Friendler: **Dreina** (water-drop head; "lesser important").
+- **R-13.3 Corruption stats.** Each has speed, detection radius (sight), hearing radius and damage. **Fatal = instant kill, Stalk = 2 damage, others = 1 damage.** Values are in `GameData.CORRUPTIONS` (the deck gives the concept, not the numbers: PLACEHOLDER).
+- **R-13.4 Health.** Damage implies health. PLACEHOLDER: **6 HP**, 1.2 s invulnerability after a hit, +2 HP when you reach the elevator, healing items (medkits) on every floor. HP and status are shown bottom-left.
+- **R-13.5 Eyes.** Red, glowing; each Corruption carries a red light so it shows in poor lighting. Cybot and Bolten carry a big bright light.
+- **R-13.6 Behaviours.**
+  - **Sonia** hunts the healthiest player (solo: you), instant kill. **Serrani** runs to noise. **Surrena** lies in a wall and pops out on a lone player.
+  - **Rencha**: stalks at a distance; once she has seen you, you are slowed for the floor and she chases for 20 s (2 damage).
+  - **Cybot**: follows Rencha, breaks machines (they leak Sonium slowly; progress drains), chases when he sees you.
+  - **Ivina**: hangs on the ceiling, drops on you when you walk under her, grows poison plants (poison + slow).
+  - **Bolten**: dashes at you at 8 m/s (you sprint at 9), recoils after a hit.
+  - **Dreina**: drops Sonium puddles (slow + dim screen); some contain a hard chunk that sticks to you (12 s) and makes her chase 1.5x faster.
+- **R-13.7 Minigames.** **Surrena's grab**: alternate A and D 18 times in 4 s or die; success stuns her and gives 2 s of safety. **Ivina's thorns**: click all 3 red points in 5 s or take 2 damage and get poisoned. Counts/timings are PLACEHOLDERS (`scripts/minigame.gd`).
+- **R-13.8 Surrena warning.** A purple **ichor puddle on the wall** marks where Surrena lies.
+- **R-13.9 Interactions.**
+  - Cybot and Rencha follow each other; Cybot breaking a machine within 7 m of Rencha gives her a speed boost (8 s).
+  - Surrena turns aggressive if Sonia is within 14 m: she pops out and stuns Sonia for 4 s.
+  - Serrani and Cybot hold **staring contests** (about 30 s, every ~2 min) while you are far away; if you interrupt (come within 6 m or make noise) both get a 15 s speed boost; if not, you get a quiet half minute.
+  - Sonia poisons some healing items when she is on the floor: they make you ill (slowed 15 s) instead of healing.
+- **R-13.10 Spawning (deck table).** Sonia/Serrani/Surrena from **floor 20** at 1% each; Rencha/Cybot/Ivina/Bolten from **floor 10** at 1.5% each; the table's many "WIP" rows are unfinished Corruptions. PLACEHOLDER: only **Dreina** (floor 0, 4.55%) fills the always-available slot, so **floors 1-9 spawn only Dreina**. Weights renormalise over eligible kinds (`GameData.pick_corruption`). The deck says earlier-floor odds are higher "for certain Corruptions" but not which: TBD. For testing, PageUp/PageDown in the lobby set the starting floor (+/-5).
+- **R-13.11 Research.** Each Corruption has four tasks (found x10, follow within 5 m for 30 s straight, a specific task, chased for N s); finish them and **Claim** the reward in the lobby (press **R**). Progress and claims are saved.
+  - Rewards: Rencha = immunity to her slowness (**5 jars**), Ivina = poison immunity (**10 jars**), Bolten = +8% speed; Cybot = a utility (machines leak 50% slower); Sonia/Serrani/Surrena/Dreina = a title and a guide. All claimed = **Master Researcher**.
+  - PLACEHOLDERS: **1 jar = 10 Sonium** (the deck says "explained later"); tasks 3 of Serrani, Surrena, Cybot, Ivina, Bolten, Dreina are invented; Sonia's "chosen over another person in a chase" counts when she first hunts you solo (needs multiplayer).
+  - TBD: "buy any items at the start of the game" for the full-research title (only the title is implemented), perks and guides ("explained later").
+- **R-13.12 Open questions added.** How much health do players have? What do jars of Sonium look like and where do they come from? What do the WIP Corruptions look like? Which Corruptions are boosted before floor 20/30? What do research utilities, perks and guides do?
