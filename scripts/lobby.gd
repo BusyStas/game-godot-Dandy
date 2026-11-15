@@ -229,7 +229,7 @@ func _add_elevators() -> void:
 	for i in 4:
 		var x := -9.0 + i * 6.0
 		FloorBuilder.build_elevator_doors(self, Vector3(x, 0, -14.45), 3.2, 3.0, true)
-		FloorBuilder.label(self, "Elevator %d" % (i + 1), Vector3(x, 4.6, -14.3))
+		FloorBuilder.label(self, "Elevator %d" % (i + 1), Vector3(x, 4.5, -14.45), 48, Color.WHITE, false)
 		FloorBuilder.map_marker(self, Color(0.2, 1.0, 0.3), 1.4, 7.0, true).position += Vector3(x, 0, -13.0)
 		var trigger := Area3D.new()
 		trigger.position = Vector3(x, 1.5, -12.5)
