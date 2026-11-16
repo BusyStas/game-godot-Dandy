@@ -55,6 +55,7 @@ var _stare_with: Node = null
 var _stare_until := 0.0
 var _next_stare := 30.0
 var _in_space := false
+var _puddles: Array = []
 var _mound: MeshInstance3D
 
 
@@ -586,6 +587,12 @@ func _drop_puddle() -> void:
 	puddle.set("type", "hard" if randf() < 0.25 else "puddle")
 	get_parent().add_child(puddle)
 	puddle.global_position = Vector3(global_position.x, 0.0, global_position.z)
+	# keep only her most recent puddles so a long chase cannot pile up nodes
+	_puddles.append(puddle)
+	while _puddles.size() > 14:
+		var old = _puddles.pop_front()
+		if is_instance_valid(old):
+			old.queue_free()
 
 
 ## --- Serrani <-> Cybot staring contests (deck: "Corruption Basics 3") ---------------------------

@@ -20,6 +20,7 @@ config/features=PackedStringArray("4.7")
 
 [autoload]
 
+ErrorLog="*res://scripts/error_log.gd"
 RoundManager="*res://scripts/round_manager.gd"
 
 [display]
