@@ -457,6 +457,14 @@ func _begin_floor() -> void:
 		notice.emit(GameData.LORE[current_map])
 
 
+## Called when the player(s) stand inside the floor's elevator during the return phase: leave right away.
+func elevator_reached() -> void:
+	if state != State.RETURN_TO_ELEVATOR:
+		return
+	_run_id += 1   # cancels the pending return timer
+	_end_floor()
+
+
 func _end_floor() -> void:
 	floor_ended.emit()
 	if state != State.RETURN_TO_ELEVATOR:

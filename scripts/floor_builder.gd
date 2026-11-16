@@ -113,48 +113,53 @@ static func build_elevator_doors(parent: Node, pos: Vector3, width := 3.2, heigh
 	return root
 
 
-## The elevator interior: 4x4 cabin, carpet, wood panels, handrails, lamp, control panel,
+## The elevator interior: 8x8 cabin, carpet, wood panels, handrails, lamp, control panel,
 ## doors on the +Z side and a large mirror on the back (-Z) wall. Origin = centre of the floor.
 ## The mirror node is named "Mirror".
+## Half the cabin width/depth: 8 m x 8 m so a full party of 10 fits (deck bug list: "max 10 will be in ele").
+const CABIN_HALF := 4.0
+
 static func build_cabin(origin: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.position = origin
 	var steel := Color(0.62, 0.64, 0.68)
 	var wood := Color(0.45, 0.28, 0.15)
-	var half := 2.0
+	var half := CABIN_HALF
 	var h := 3.0
 	var t := 0.2
 	# shell
-	box(root, Vector3(0, -0.5, 0), Vector3(4 + 2 * t, 1, 4 + 2 * t), Color(0.3, 0.3, 0.32))
-	box(root, Vector3(0, h + t / 2.0, 0), Vector3(4 + 2 * t, t, 4 + 2 * t), Color(0.85, 0.85, 0.82))
-	box(root, Vector3(0, h / 2.0, -half - t / 2.0), Vector3(4 + 2 * t, h, t), steel)
-	box(root, Vector3(0, h / 2.0, half + t / 2.0), Vector3(4 + 2 * t, h, t), steel)
-	box(root, Vector3(-half - t / 2.0, h / 2.0, 0), Vector3(t, h, 4), steel)
-	box(root, Vector3(half + t / 2.0, h / 2.0, 0), Vector3(t, h, 4), steel)
+	box(root, Vector3(0, -0.5, 0), Vector3(2.0 * half + 2 * t, 1, 2.0 * half + 2 * t), Color(0.3, 0.3, 0.32))
+	box(root, Vector3(0, h + t / 2.0, 0), Vector3(2.0 * half + 2 * t, t, 2.0 * half + 2 * t), Color(0.85, 0.85, 0.82))
+	box(root, Vector3(0, h / 2.0, -half - t / 2.0), Vector3(2.0 * half + 2 * t, h, t), steel)
+	box(root, Vector3(0, h / 2.0, half + t / 2.0), Vector3(2.0 * half + 2 * t, h, t), steel)
+	box(root, Vector3(-half - t / 2.0, h / 2.0, 0), Vector3(t, h, 2.0 * half), steel)
+	box(root, Vector3(half + t / 2.0, h / 2.0, 0), Vector3(t, h, 2.0 * half), steel)
 	# carpet, thin so it does not block walking
-	box(root, Vector3(0, 0.01, 0), Vector3(3.8, 0.02, 3.8), Color(0.5, 0.08, 0.1), false)
-	box(root, Vector3(0, 0.02, 0), Vector3(3.2, 0.02, 3.2), Color(0.38, 0.05, 0.08), false)
+	box(root, Vector3(0, 0.01, 0), Vector3(2.0 * half - 0.2, 0.02, 2.0 * half - 0.2), Color(0.5, 0.08, 0.1), false)
+	box(root, Vector3(0, 0.02, 0), Vector3(2.0 * half - 0.8, 0.02, 2.0 * half - 0.8), Color(0.38, 0.05, 0.08), false)
 	# wood wainscoting on the side walls and the door wall
 	for sx in [-1.0, 1.0]:
-		box(root, Vector3(sx * (half - 0.03), 0.65, 0), Vector3(0.06, 1.3, 3.9), wood, false)
-		box(root, Vector3(sx * (half - 0.04), 1.32, 0), Vector3(0.08, 0.05, 3.9), Color(0.75, 0.6, 0.25), false)
+		box(root, Vector3(sx * (half - 0.03), 0.65, 0), Vector3(0.06, 1.3, 2.0 * half - 0.1), wood, false)
+		box(root, Vector3(sx * (half - 0.04), 1.32, 0), Vector3(0.08, 0.05, 2.0 * half - 0.1), Color(0.75, 0.6, 0.25), false)
 		# handrail
-		box(root, Vector3(sx * (half - 0.14), 1.0, 0), Vector3(0.05, 0.05, 3.0), Color(0.85, 0.85, 0.88), false)
-		for sz in [-1.4, 1.4]:
+		box(root, Vector3(sx * (half - 0.14), 1.0, 0), Vector3(0.05, 0.05, 2.0 * half - 1.0), Color(0.85, 0.85, 0.88), false)
+		for sz in [-(half - 0.6), half - 0.6]:
 			box(root, Vector3(sx * (half - 0.08), 1.0, sz), Vector3(0.12, 0.05, 0.05), Color(0.85, 0.85, 0.88), false)
-	box(root, Vector3(0, 0.65, half - 0.03), Vector3(3.9, 1.3, 0.06), wood, false)
-	box(root, Vector3(0, 0.65, -half + 0.03), Vector3(3.9, 1.3, 0.06), wood, false)
+	box(root, Vector3(0, 0.65, half - 0.03), Vector3(2.0 * half - 0.1, 1.3, 0.06), wood, false)
+	box(root, Vector3(0, 0.65, -half + 0.03), Vector3(2.0 * half - 0.1, 1.3, 0.06), wood, false)
 	# ceiling lamp panel + real light
-	_emissive(root, Vector3(0, h - 0.03, 0), Vector3(1.6, 0.05, 1.6), Color(1.0, 0.96, 0.85), 2.5)
-	var lamp := OmniLight3D.new()
-	lamp.position = Vector3(0, h - 0.4, 0)
-	lamp.omni_range = 7.0
-	lamp.light_energy = 1.3
-	lamp.light_color = Color(1.0, 0.95, 0.85)
-	root.add_child(lamp)
+	for lx in [-2.0, 2.0]:
+		for lz in [-2.0, 2.0]:
+			_emissive(root, Vector3(lx, h - 0.03, lz), Vector3(1.6, 0.05, 1.6), Color(1.0, 0.96, 0.85), 2.5)
+			var lamp := OmniLight3D.new()
+			lamp.position = Vector3(lx, h - 0.4, lz)
+			lamp.omni_range = 7.0
+			lamp.light_energy = 1.0
+			lamp.light_color = Color(1.0, 0.95, 0.85)
+			root.add_child(lamp)
 	# control panel on the right wall, near the doors
 	var panel := Node3D.new()
-	panel.position = Vector3(half - 0.08, 1.35, 1.0)
+	panel.position = Vector3(half - 0.08, 1.35, half - 1.0)
 	root.add_child(panel)
 	box(panel, Vector3.ZERO, Vector3(0.05, 0.9, 0.36), Color(0.15, 0.15, 0.17), false)
 	for r in 4:
@@ -206,13 +211,17 @@ static func build_floor(map_name: String, origin: Vector3, cfg: Dictionary) -> D
 	label(root, "ELEVATOR", Vector3(0, 4.5, -d / 2.0 + 0.58), 48, Color.WHITE, false)
 	map_marker(root, Color(0.2, 1.0, 0.3), 1.8, 7.0, true).position += Vector3(0, 0, -d / 2.0 + 2.5)
 	var elevator := Area3D.new()
-	elevator.position = Vector3(0, 1.5, -d / 2.0 + 3.0)
+	elevator.position = Vector3(0, 1.5, -d / 2.0 + 3.5)
 	var cs := CollisionShape3D.new()
 	var bs := BoxShape3D.new()
-	bs.size = Vector3(5, 3, 5)
+	bs.size = Vector3(8, 3, 6)   # room for a party of 10
 	cs.shape = bs
 	elevator.add_child(cs)
 	root.add_child(elevator)
+	# an alcove so the elevator reads as a room you walk into
+	for sx in [-1.0, 1.0]:
+		box(root, Vector3(sx * 4.15, 2.5, -d / 2.0 + 3.5), Vector3(0.3, 5, 6), wall_col)
+	box(root, Vector3(0, 0.02, -d / 2.0 + 3.5), Vector3(7.8, 0.04, 5.8), Color(0.38, 0.05, 0.08), false)
 	var spawn_local := Vector3(0, 0.5, -d / 2.0 + 3.5)
 
 	var rng := RandomNumberGenerator.new()
@@ -236,8 +245,15 @@ static func build_floor(map_name: String, origin: Vector3, cfg: Dictionary) -> D
 		_reserve(rects, c.position, 3.0)
 
 	var kinds: Array = []
+	# deck bug list: only one of each Corruption can spawn on a floor
 	for i in int(cfg["corruptions"]):
-		kinds.append(cfg["kinds"][i] if cfg.has("kinds") and i < cfg["kinds"].size() else GameData.pick_corruption(rng, int(cfg["floor"])))
+		var kind: String = cfg["kinds"][i] if cfg.has("kinds") and i < cfg["kinds"].size() else GameData.pick_corruption(rng, int(cfg["floor"]))
+		var tries := 0
+		while kinds.has(kind) and tries < 60:
+			kind = GameData.pick_corruption(rng, int(cfg["floor"]))
+			tries += 1
+		if not kinds.has(kind):
+			kinds.append(kind)
 	var wander_bounds := Rect2(origin.x - w / 2.0 + 2.0, origin.z - d / 2.0 + 8.0, w - 4.0, d - 10.0)
 	for kind in kinds:
 		var cr := CharacterBody3D.new()

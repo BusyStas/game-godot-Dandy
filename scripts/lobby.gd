@@ -65,6 +65,9 @@ func _process(_delta: float) -> void:
 			var p: Vector3 = _shops[i]["pos"]
 			if Vector2(_player.global_position.x - p.x, _player.global_position.z - p.z).length() < SHOP_RANGE:
 				_near_shop = i
+	if RoundManager.state == RoundManager.State.RETURN_TO_ELEVATOR and _floor_elevator != null \
+			and _floor_elevator.overlaps_body(_player):
+		RoundManager.elevator_reached()
 	_refresh_hud()
 
 
@@ -75,7 +78,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_ENTER:
 			if _selection.is_open():
 				_selection.confirm()
-		KEY_F:
+		KEY_F, KEY_E:
 			if _near_shop >= 0 and not _ui_open():
 				_open_shop(_near_shop)
 		KEY_R:
@@ -162,6 +165,10 @@ func _on_floor_started(map_name: String, _floor_number: int) -> void:
 	})
 	_floor_root = built["root"]
 	_floor_elevator = built["elevator"]
+	# fewer than planned Corruptions can spawn (one of each kind per floor); keep the "spot them" task winnable
+	RoundManager.corruption_count = (built["kinds"] as Array).size()
+	if RoundManager.task_kind == "spotted":
+		RoundManager.tasks_total = mini(RoundManager.tasks_total, RoundManager.corruption_count)
 	add_child(_floor_root)
 	_teleport(built["spawn"])
 
@@ -326,7 +333,7 @@ func _refresh_hud() -> void:
 	match s:
 		RoundManager.State.LOBBY:
 			if _near_shop >= 0:
-				lines.append("Press F to open %s" % _shops[_near_shop]["name"])
+				lines.append("Press F or E to open %s" % _shops[_near_shop]["name"])
 			else:
 				lines.append("WASD move, Shift sprint, mouse look, Tab frees mouse. Walk into an elevator.")
 		RoundManager.State.COUNTDOWN, RoundManager.State.PRE_FLOOR_ELEVATOR:

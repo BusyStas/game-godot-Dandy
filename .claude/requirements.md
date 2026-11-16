@@ -253,3 +253,11 @@ Source: deck modified 2026-11-15 22:28 UTC. Supersedes the matching items in sec
 - **R-14.5 Corruptions per floor.** "The first couple floors have two Corruptions, then more": 2 on floors 1-2, then 3 rising to 6 (every 5 floors). PLACEHOLDER numbers.
 - **R-14.6 Research** for the three new kinds uses the same four-task shape (found x10, follow 30 s, a specific task, chased 30 s). Task 3 (shake free x3 / escape Lim & Lem's space x3 / escape Minchei x3) is invented. Dreina's WIP-era rows are gone; the table now names Dreina, Shovelina, Lim & Lem and Minchei.
 - **R-14.7 Open questions.** What happens to damage "changed" by some Corruptions? What do the three "???" Friendlers look like? What do Lim & Lem's and Minchei's research rewards give (placeholders: titles)? Multiplayer behaviours (Minchei "to the other Corruptions", Sonia's target) still need multiplayer.
+
+
+---
+
+## 15. Deck update 3 (2026-11-15, 34 slides): bug list and Littay
+
+- **Bug fixes done:** the elevator cabin is now 8 m x 8 m so 10 players fit; the floor's elevator is a real alcove (8 x 6 m) and walking into it during the return phase ends the floor at once (no more waiting out the timer); lobby shops open with F or E near each of the three shops; only one of each Corruption spawns per floor (so floors 1-4 have a single Corruption, Dreina, and the "spot them" task shrinks to match); every Corruption now has its painted model exported as a file under `assets/characters/` (`tools/export_models.gd` regenerates them; the in-game models are still drawn from the same code).
+- **Not built yet:** **Littay** (new Friendler: nightlight, lights dark areas, drags you to the darkest part of the map and leaves you in an ichor tank; escape by a hard minigame or another player pulling you out) and Bolten's "can catch up and attack" text. Needs multiplayer for the rescue.
