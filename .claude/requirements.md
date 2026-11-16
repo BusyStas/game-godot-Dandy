@@ -261,3 +261,14 @@ Source: deck modified 2026-11-15 22:28 UTC. Supersedes the matching items in sec
 
 - **Bug fixes done:** the elevator cabin is now 8 m x 8 m so 10 players fit; the floor's elevator is a real alcove (8 x 6 m) and walking into it during the return phase ends the floor at once (no more waiting out the timer); lobby shops open with F or E near each of the three shops; only one of each Corruption spawns per floor (so floors 1-4 have a single Corruption, Dreina, and the "spot them" task shrinks to match); every Corruption now has its painted model exported as a file under `assets/characters/` (`tools/export_models.gd` regenerates them; the in-game models are still drawn from the same code).
 - **Not built yet:** **Littay** (new Friendler: nightlight, lights dark areas, drags you to the darkest part of the map and leaves you in an ichor tank; escape by a hard minigame or another player pulling you out) and Bolten's "can catch up and attack" text. Needs multiplayer for the rescue.
+
+---
+
+## 16. Deck update 4 (2026-11-15, 36 slides): character shop, Littay, rarity scaling, bug list
+
+- **R-16.1 Character shop.** Sonia, Serrani and Surrena are admin-only (never sold); every other character is bought with Sonium, about **500 (worst) to 4000 (best)**, with stats shown as **1-5 stars** in the shop and the selection menu. Implemented with the placeholder roster (Recruit 500, Scout 500, Engineer 1500, Ghost 4000; stars Speed/Fixing/Stealth). Daniel has not listed the real characters yet.
+- **R-16.2 Littay** (Friendler, floor 10+, 2.5%, replaces a WIP row): nightlight with a spiky sun head, lights dark areas, roams. Catching you drags you to the **darkest depths of the map** (far end from the elevator) into an **ichor tank**; escape by a **difficult minigame** (24 A/D presses plus 3 SPACE timing hits in 9 s; failure costs 1 HP and retries) or **another player pulling you out** (needs multiplayer, not built). Research task 3: climb out twice (placeholder); reward is a title (placeholder).
+- **R-16.3 Spawn odds scale with floor.** Higher floors boost the rare Corruptions and thin the common ones, "eventually having Fatals spawning almost always" (stalks x1.07 per floor from 10, fatals a further x1.12 per floor from 20; about 35% Fatal at floor 40, over 90% by floor 70). PLACEHOLDER curve.
+- **R-16.4 Corrupted look.** Models are now mutated, not just normal figures with goo: bodies are swallowed by black Sonium, with spikes on shoulders/back/hips, goo blotches, and red glowing eyes. Still blocky placeholders, not the deck's art.
+- **R-16.5 Minchei drag fix.** She now drops you in front of the target (in front of Surrena's wall hole), inside the playable bounds, instead of at its position (fixes falling out of the map, seen on floor 51).
+- **R-16.6 Not done.** "Maps need to look way better": the 24 maps are still plain themed boxes and need real art. Multiplayer rescue from Littay's tank.

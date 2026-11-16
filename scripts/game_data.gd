@@ -6,11 +6,22 @@ extends RefCounted
 const STARTERS := ["recruit", "scout"]
 
 const CHARACTERS := {
-	"recruit": {"name": "Recruit", "price": 60, "desc": "Balanced all-rounder.", "speed": 1.0, "fix": 1.0, "quiet": 1.0},
-	"scout": {"name": "Scout", "price": 60, "desc": "Runs 15% faster.", "speed": 1.15, "fix": 1.0, "quiet": 1.0},
-	"engineer": {"name": "Engineer", "price": 100, "desc": "Fixes machines 30% faster.", "speed": 1.0, "fix": 1.3, "quiet": 1.0},
-	"ghost": {"name": "Ghost", "price": 250, "desc": "Makes half the noise.", "speed": 1.0, "fix": 1.0, "quiet": 0.5},
+	# deck: bought characters cost about 500 (worst) to 4000 (best) Sonium; stars run 1 (worst) to 5 (best).
+	# Sonia, Serrani and Surrena are admin-only and never sold. The roster here is a PLACEHOLDER until Daniel lists the real ones.
+	"recruit": {"name": "Recruit", "price": 500, "desc": "Balanced all-rounder.", "speed": 1.0, "fix": 1.0, "quiet": 1.0, "stars": {"Speed": 2, "Fixing": 2, "Stealth": 2}},
+	"scout": {"name": "Scout", "price": 500, "desc": "Runs 15% faster.", "speed": 1.15, "fix": 1.0, "quiet": 1.0, "stars": {"Speed": 3, "Fixing": 1, "Stealth": 2}},
+	"engineer": {"name": "Engineer", "price": 1500, "desc": "Fixes machines 30% faster.", "speed": 1.0, "fix": 1.3, "quiet": 1.0, "stars": {"Speed": 2, "Fixing": 4, "Stealth": 2}},
+	"ghost": {"name": "Ghost", "price": 4000, "desc": "Makes half the noise.", "speed": 1.0, "fix": 1.0, "quiet": 0.5, "stars": {"Speed": 3, "Fixing": 2, "Stealth": 5}},
 }
+
+## "Balanced all-rounder.  Speed ★★☆☆☆  Fixing ..." for the shop and the selection screen.
+static func desc_with_stars(info: Dictionary) -> String:
+	var text: String = str(info.get("desc", ""))
+	if info.has("stars"):
+		for k in info["stars"]:
+			var n: int = int(info["stars"][k])
+			text += "   %s %s%s" % [k, "★".repeat(n), "☆".repeat(5 - n)]
+	return text
 
 const SKINS := {
 	"default": {"name": "Default", "price": 0, "desc": "Plain.", "color": Color(0.8, 0.8, 0.8)},
@@ -78,20 +89,21 @@ const CORRUPTIONS := {
 	"dreina": {"name": "Dreina", "cls": "friendler", "speed": 3.5, "sight": 12.0, "hearing": 10.0, "detect_time": 10.0, "damage": 1, "min_floor": 5, "weight": 2.5},
 	"shovelina": {"name": "Shovelina", "cls": "friendler", "speed": 2.8, "sight": 10.0, "hearing": 12.0, "detect_time": 6.0, "damage": 1, "min_floor": 5, "weight": 2.5},
 	"limlem": {"name": "Lim & Lem", "cls": "friendler", "speed": 6.0, "sight": 12.0, "hearing": 6.0, "detect_time": 0.0, "damage": 1, "min_floor": 5, "weight": 2.5},
+	"littay": {"name": "Littay", "cls": "friendler", "speed": 3.0, "sight": 12.0, "hearing": 10.0, "detect_time": 10.0, "damage": 1, "min_floor": 10, "weight": 2.5},
 	"minchei": {"name": "Minchei", "cls": "friendler", "speed": 2.6, "sight": 4.0, "hearing": 14.0, "detect_time": 12.0, "damage": 1, "min_floor": 5, "weight": 2.5},
 }
 
 # The deck's table still has unfinished ("WIP") rows. They keep their share of the odds; until they exist, a WIP
 # roll spawns one of the finished Friendlers (any floor) as a stand-in. [min_floor, rarity]
 static func wip_rows() -> Array:
-	var rows: Array = [[10, 2.5], [5, 2.5], [5, 2.5]]
+	var rows: Array = [[5, 2.5], [5, 2.5]]
 	for i in 8:
 		rows.append([0, 3.5])
 	for i in 10:
 		rows.append([0, 4.55])
 	return rows
 
-const WIP_STAND_INS := ["dreina", "shovelina", "limlem", "minchei"]
+const WIP_STAND_INS := ["dreina", "shovelina", "limlem", "minchei", "littay"]
 
 # Short alarm text shown by the monster warning.
 const WARNINGS := {
@@ -105,6 +117,7 @@ const WARNINGS := {
 	"dreina": "DREINA is chasing you - avoid the Sonium puddles!",
 	"shovelina": "SHOVELINA is digging toward you - keep moving!",
 	"limlem": "LIM & LEM - do not get close to them!",
+	"littay": "LITTAY is roaming - he drags people to the darkest part of the map!",
 	"minchei": "MINCHEI is roaming - she can drag you to a Fatal!",
 }
 
@@ -166,6 +179,12 @@ const RESEARCH := {
 		{"ev": "space_escape", "goal": 3, "text": "Step into Lim & Lem's space and get away unhurt three times"},
 		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Lim & Lem for half a minute"}],
 		"cost_jars": 0, "reward": "title", "reward_text": "Title: Personal Space + a guide on keeping your distance"},
+	"littay": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Littay ten times"},
+		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Littay for half a minute (within 5 m)"},
+		{"ev": "tank_escape", "goal": 2, "text": "Climb out of Littay's ichor tank twice"},
+		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Littay for half a minute"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Night Owl + a guide to the dark parts of the map"},
 	"minchei": {"tasks": [
 		{"ev": "found", "goal": 10, "text": "Find Corrupted Minchei ten times"},
 		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Minchei for half a minute (within 5 m)"},
@@ -188,11 +207,18 @@ static func pick_corruption(rng: RandomNumberGenerator, floor_number: int) -> St
 	var kinds: Array = []
 	var weights: Array = []
 	var total := 0.0
+	# deck: higher floors make rarer Corruptions more likely and common ones rarer, until Fatals spawn almost always
+	var boost := pow(1.07, maxf(0.0, float(floor_number) - 10.0))
 	for k in CORRUPTIONS:
 		if floor_number >= int(CORRUPTIONS[k]["min_floor"]):
+			var w := float(CORRUPTIONS[k]["weight"])
+			if CORRUPTIONS[k]["cls"] != "friendler":
+				w *= boost
+			if CORRUPTIONS[k]["cls"] == "fatal":
+				w *= pow(1.12, maxf(0.0, float(floor_number) - 20.0))   # Fatals eventually spawn almost always
 			kinds.append(k)
-			weights.append(float(CORRUPTIONS[k]["weight"]))
-			total += float(CORRUPTIONS[k]["weight"])
+			weights.append(w)
+			total += w
 	for row in wip_rows():
 		if floor_number >= int(row[0]):
 			kinds.append("")   # unfinished row: stand-in below

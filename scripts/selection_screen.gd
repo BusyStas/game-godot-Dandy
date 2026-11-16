@@ -91,7 +91,7 @@ func _fill(key: String, ids: Array, data: Dictionary) -> void:
 		var info: Dictionary = data[id]
 		var text: String = info["name"]
 		if info.has("desc") and info["desc"] != "":
-			text += "  -  " + info["desc"]
+			text += "  -  " + GameData.desc_with_stars(info)
 		ob.add_item(text)
 		ob.set_item_metadata(ob.item_count - 1, id)
 		if id == current:

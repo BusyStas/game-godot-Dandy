@@ -24,6 +24,8 @@ var _presses := 0
 var _last_key := 0
 var _hits := 0
 var _need := SHAKE_PRESSES
+var _drag_presses := DRAG_PRESSES
+var _drag_hits := DRAG_HITS
 var _track: Control
 var _needle: ColorRect
 var _zone: ColorRect
@@ -121,10 +123,12 @@ func _on_request(kind: String, source: Node, data: Dictionary) -> void:
 			_bar.max_value = _need
 			_bar.value = 0
 		"drag":
-			_title.text = "MINCHEI HAS YOU!"
-			_hint.text = "Mash A and D - and press SPACE when the needle is in the green!  (timing 0/%d)" % DRAG_HITS
-			_total = DRAG_SECONDS
-			_bar.max_value = DRAG_PRESSES
+			_drag_presses = int(data.get("presses", DRAG_PRESSES))
+			_drag_hits = int(data.get("hits", DRAG_HITS))
+			_title.text = str(data.get("title", "MINCHEI HAS YOU!"))
+			_hint.text = "Mash A and D - and press SPACE when the needle is in the green!  (timing 0/%d)" % _drag_hits
+			_total = float(data.get("seconds", DRAG_SECONDS))
+			_bar.max_value = _drag_presses
 			_bar.value = 0
 			_track.visible = true
 		"thorns":
@@ -183,10 +187,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		var x := _needle_x()
 		if x >= _zone.position.x - 4.0 and x <= _zone.position.x + _zone.size.x:
 			_hits += 1
-			_hint.text = "Mash A and D - and press SPACE when the needle is in the green!  (timing %d/%d)" % [_hits, DRAG_HITS]
+			_hint.text = "Mash A and D - and press SPACE when the needle is in the green!  (timing %d/%d)" % [_hits, _drag_hits]
 	if _kind == "shake" and _presses >= _need:
 		_close(true)
-	elif _kind == "drag" and _presses >= DRAG_PRESSES and _hits >= DRAG_HITS:
+	elif _kind == "drag" and _presses >= _drag_presses and _hits >= _drag_hits:
 		_close(true)
 
 

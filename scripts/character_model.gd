@@ -21,6 +21,7 @@ const HEAD_SPEC := {
 	"lem": [0.0022, 230, 100, 0.0],
 	"limlem": [0.0022, 230, 100, 0.0],
 	"minchei": [0.0024, 210, 115, 0.0],
+	"littay": [0.0024, 215, 110, 0.0],
 }
 
 # kind -> pixel positions (column, row) of the two eyes in the head texture, used for the red Corruption glow
@@ -38,6 +39,7 @@ const EYES := {
 	"lem": [Vector2(65, 130), Vector2(135, 130)],
 	"limlem": [Vector2(65, 130), Vector2(135, 130)],
 	"minchei": [Vector2(85, 110), Vector2(150, 110)],
+	"littay": [Vector2(80, 105), Vector2(140, 105)],
 }
 
 # body styles: torso, stripes (or null), belt, pants, arm, cuff, arm stripe, extra
@@ -50,6 +52,7 @@ const BODY_STYLES := {
 	"shovelina": {"torso": Color(0.87, 0.4, 0.37), "stripe": null, "belt": Color.BLACK, "pants": Color(0.25, 0.45, 0.85), "arm": Color(0.72, 0.85, 0.7), "cuff": Color.BLACK, "arm_stripe": false},
 	"lim": {"torso": Color(0.15, 0.28, 0.1), "stripe": null, "belt": Color(0.93, 0.93, 0.93), "pants": Color(0.4, 0.0, 0.0), "arm": Color(0.15, 0.28, 0.1), "cuff": Color(0.95, 0.76, 0.18), "arm_stripe": false},
 	"lem": {"torso": Color(0.5, 0.37, 0.0), "stripe": null, "belt": Color(0.93, 0.93, 0.93), "pants": Color(0.03, 0.2, 0.4), "arm": Color(0.5, 0.37, 0.0), "cuff": Color(0.4, 0.65, 0.3), "arm_stripe": false},
+	"littay": {"torso": Color(0.35, 0.35, 0.35), "stripe": null, "belt": null, "pants": Color(0.25, 0.45, 0.85), "arm": Color(0.9, 0.55, 0.2), "cuff": Color(0.9, 0.55, 0.2), "arm_stripe": false},
 	"minchei": {"torso": Color(0.75, 0.45, 0.6), "stripe": null, "belt": null, "pants": Color(0.72, 0.85, 0.7), "arm": Color(0.55, 0.5, 0.75), "cuff": Color(0.55, 0.5, 0.75), "arm_stripe": false},
 	"bolten": {"torso": Color(0.8, 0.02, 0.02), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.8, 0.02, 0.02), "arm": Color(0.8, 0.02, 0.02), "cuff": Color(1.0, 0.9, 0.1), "arm_stripe": false},
 }
@@ -85,10 +88,37 @@ static func build(kind: String) -> Node3D:
 
 
 static func _corrupt(root: Node3D, kind: String) -> void:
+	# the whole figure is mostly swallowed by black Sonium: darken everything built so far
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.material_override is StandardMaterial3D:
+			var m := (mi.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
+			m.albedo_color = m.albedo_color.lerp(Color(0.02, 0.0, 0.03), 0.62)
+			mi.material_override = m
+	var goo := Color(0.02, 0.0, 0.03)
 	# black goo blotches on the body
 	for blot in [[Vector3(0.0, 0.95, 0.0), Vector3(0.5, 0.34, 0.33)], [Vector3(-0.2, 1.38, 0.0), Vector3(0.18, 0.2, 0.31)],
-			[Vector3(0.22, 0.45, 0.0), Vector3(0.26, 0.5, 0.28)]]:
-		_box(root, blot[0], blot[1], Color(0.02, 0.0, 0.03))
+			[Vector3(0.22, 0.45, 0.0), Vector3(0.26, 0.5, 0.28)], [Vector3(0.0, 1.75, 0.04), Vector3(0.42, 0.3, 0.3)]]:
+		_box(root, blot[0], blot[1], goo)
+	# mutated growths: spikes on the shoulders, back and hips, long claws and drips
+	var spikes := [[Vector3(-0.42, 1.5, 0.05), Vector3(0, 0, 40)], [Vector3(0.42, 1.5, 0.05), Vector3(0, 0, -40)],
+			[Vector3(-0.2, 1.3, 0.22), Vector3(-35, 0, 20)], [Vector3(0.18, 1.1, 0.22), Vector3(-30, 0, -25)],
+			[Vector3(0.0, 1.65, 0.2), Vector3(-50, 0, 0)], [Vector3(-0.3, 0.75, 0.0), Vector3(0, 0, 70)],
+			[Vector3(0.3, 0.6, 0.0), Vector3(0, 0, -65)], [Vector3(-0.5, 0.65, 0.0), Vector3(0, 0, 160)],
+			[Vector3(0.5, 0.65, 0.0), Vector3(0, 0, -160)]]
+	for sp in spikes:
+		var cone := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.0
+		cm.bottom_radius = 0.07
+		cm.height = 0.45 if sp[0].y > 1.0 else 0.6
+		cone.mesh = cm
+		var cmat := StandardMaterial3D.new()
+		cmat.albedo_color = goo
+		cone.material_override = cmat
+		cone.position = sp[0]
+		cone.rotation_degrees = sp[1]
+		root.add_child(cone)
 	# red glowing eyes in front of the head
 	var spec: Array = HEAD_SPEC[kind]
 	var scale: float = spec[0]
@@ -246,6 +276,8 @@ static func _texture(kind: String) -> ImageTexture:
 			img = _draw_lim(true)
 		"minchei":
 			img = _draw_minchei()
+		"littay":
+			img = _draw_littay()
 		_:
 			img = _draw_rencha()
 	img.generate_mipmaps()
@@ -468,4 +500,19 @@ static func _draw_minchei() -> Image:
 	_eye(img, 85, 110, 22, 22)
 	_eye(img, 150, 110, 22, 22)
 	_poly(img, PackedVector2Array([Vector2(75, 160), Vector2(160, 158), Vector2(135, 195), Vector2(100, 195)]), Color.BLACK)
+	return img
+
+
+static func _draw_littay() -> Image:
+	var img := _new(220, 220)
+	var pts := PackedVector2Array()
+	for i in 32:   # a spiky sun-like nightlight
+		var a := TAU * i / 32.0
+		var r := 108.0 if i % 2 == 0 else 78.0
+		pts.append(Vector2(110.0 + cos(a) * r, 110.0 + sin(a) * r))
+	_poly(img, pts, Color(0.92, 0.5, 0.15))
+	_ellipse(img, 110, 112, 66, 66, Color(0.95, 0.62, 0.2))
+	_eye(img, 80, 105, 18, 18)
+	_eye(img, 140, 105, 18, 18)
+	_poly(img, PackedVector2Array([Vector2(80, 150), Vector2(140, 148), Vector2(125, 172), Vector2(95, 172)]), Color.BLACK)
 	return img

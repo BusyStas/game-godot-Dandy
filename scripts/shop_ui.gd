@@ -78,7 +78,7 @@ func _refresh() -> void:
 		var info: Dictionary = items[id]
 		var row := HBoxContainer.new()
 		var l := Label.new()
-		l.text = "%s  -  %s" % [info["name"], info["desc"]]
+		l.text = "%s  -  %s" % [info["name"], GameData.desc_with_stars(info)]
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)
 		var btn := Button.new()

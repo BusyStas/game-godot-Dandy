@@ -55,6 +55,7 @@ var _stare_with: Node = null
 var _stare_until := 0.0
 var _next_stare := 30.0
 var _in_space := false
+var _tank: Node3D
 var _puddles: Array = []
 var _mound: MeshInstance3D
 
@@ -164,6 +165,19 @@ func minigame_result(success: bool) -> void:
 			stun(3.0)
 			_chase_until = 0.0
 			_surface(false)
+		"littay":
+			_grabbing = false
+			if success:
+				RoundManager.research_event("littay", "tank_escape")
+				RoundManager.grant_invulnerability(3.0)
+				RoundManager.notice.emit("You climbed out of Littay's tank!")
+				if _tank != null:
+					_player.global_position = _tank.global_position + Vector3(0, 0.3, -3.5)
+				stun(4.0)
+				_chase_until = 0.0
+			else:
+				RoundManager.damage(int(_stats["damage"]), "Littay's tank")
+				get_tree().create_timer(1.2).timeout.connect(_retry_tank)
 		"minchei":
 			_grabbing = false
 			if success:
@@ -250,6 +264,10 @@ func _physics_process(delta: float) -> void:
 				var r := _limlem(dist, now)
 				target = r[0]
 				speed = r[1]
+			"littay":
+				var r := _minchei(dist, now)   # same roaming/hearing style as Minchei
+				target = r[0]
+				speed = r[1]
 			"minchei":
 				var r := _minchei(dist, now)
 				target = r[0]
@@ -281,6 +299,10 @@ func _contact() -> void:
 	if kind == "minchei":
 		if not _grabbing and RoundManager.request_minigame("drag", self, {}):
 			_grabbing = true
+		return
+	if kind == "littay":
+		if not _grabbing and RoundManager.in_floor():
+			_drag_to_tank()
 		return
 	if dmg >= 999:
 		RoundManager.kill_player("Caught by %s" % _stats["name"])
@@ -317,7 +339,7 @@ func _check_sight(dist: float) -> void:
 			RoundManager.apply_slow()
 			if now >= _chase_until:
 				_chase_until = now + CHASE_SECONDS
-		"bolten", "cybot", "dreina", "shovelina", "minchei":
+		"bolten", "cybot", "dreina", "shovelina", "minchei", "littay":
 			if now >= _chase_until:
 				_chase_until = now + float(_stats["detect_time"])   # deck: detection time = how long it keeps chasing after losing you
 
@@ -576,8 +598,57 @@ func _drag_player() -> void:
 			best = c
 	RoundManager.damage(int(_stats["damage"]), "Minchei")
 	if best != null:
-		_player.global_position = best.global_position + Vector3(1.8, 0.2, 0.0)
+		# land in front of the Corruption (for Surrena: in front of her wall hole), inside the playable area
+		var b: Rect2 = bounds
+		var centre := Vector3(b.position.x + b.size.x / 2.0, 0.0, b.position.y + b.size.y / 2.0)
+		var inward := (centre - best.global_position)
+		inward.y = 0.0
+		inward = inward.normalized() * 2.5
+		var dest := best.global_position + inward
+		dest.x = clampf(dest.x, b.position.x + 0.5, b.end.x - 0.5)
+		dest.z = clampf(dest.z, b.position.y + 0.5, b.end.y - 0.5)
+		dest.y = 0.4
+		_player.global_position = dest
 		RoundManager.notice.emit("Minchei dragged you to %s!" % GameData.CORRUPTIONS[best.get("kind")]["name"])
+
+
+## Littay drags you to the darkest depths of the map (the far end from the elevator) and drops you in an ichor tank.
+func _drag_to_tank() -> void:
+	_grabbing = true
+	var b: Rect2 = bounds
+	var spot := Vector3(b.position.x + b.size.x / 2.0, 0.0, b.end.y - 3.0)
+	if _tank == null or not is_instance_valid(_tank):
+		_tank = Node3D.new()
+		var cyl := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 1.3
+		cm.bottom_radius = 1.3
+		cm.height = 3.2
+		cyl.mesh = cm
+		var tm := StandardMaterial3D.new()
+		tm.albedo_color = Color(0.45, 0.05, 0.6, 0.55)
+		tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		tm.emission_enabled = true
+		tm.emission = Color(0.35, 0.0, 0.5)
+		cyl.material_override = tm
+		cyl.position.y = 1.6
+		_tank.add_child(cyl)
+		get_parent().add_child(_tank)
+		_tank.global_position = spot
+	_player.global_position = _tank.global_position + Vector3(0, 0.3, 0)
+	RoundManager.notice.emit("Littay dragged you to the darkest depths - you are in an ichor tank!")
+	_start_tank_game()
+
+
+func _start_tank_game() -> void:
+	if not RoundManager.request_minigame("drag", self, {"title": "ESCAPE THE ICHOR TANK!", "presses": 24, "hits": 3, "seconds": 9.0}):
+		_grabbing = false
+
+
+func _retry_tank() -> void:
+	if is_instance_valid(self) and RoundManager.in_floor() and RoundManager.health > 0:
+		_grabbing = true
+		_start_tank_game()
 
 
 func _drop_puddle() -> void:
