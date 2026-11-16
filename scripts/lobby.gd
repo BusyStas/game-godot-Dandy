@@ -88,12 +88,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				elif not _ui_open():
 					_research.open()
 					_sync_ui_lock()
-		KEY_PAGEUP:
-			if RoundManager.state == RoundManager.State.LOBBY:
-				RoundManager.start_floor += 5   # debug: start runs deeper to meet later Corruptions
-		KEY_PAGEDOWN:
-			if RoundManager.state == RoundManager.State.LOBBY:
-				RoundManager.start_floor = maxi(1, RoundManager.start_floor - 5)
 		KEY_T:
 			RoundManager.report_task_done()
 		KEY_BACKSPACE:
@@ -321,7 +315,7 @@ func _refresh_hud() -> void:
 	var lines: Array = [
 		"%s | %s | card: %s | %s" % [ch["name"], skin["name"], deco["name"], util["name"]],
 		"Sonium: %d   Best floor: %d%s%s" % [RoundManager.sonium, RoundManager.best_floor,
-			("   Start floor: %d" % RoundManager.start_floor) if s == RoundManager.State.LOBBY else "",
+			"",
 			("   [%s]" % RoundManager.title()) if RoundManager.title() != "" else ""],
 		"State: %s" % RoundManager.State.keys()[s],
 	]
@@ -346,7 +340,7 @@ func _refresh_hud() -> void:
 			lines.append("RUN BACK TO THE ELEVATOR! %d s left" % ceili(RoundManager.time_left()))
 	if RoundManager.slow_factor < 1.0:
 		lines.append("Slowed by Rencha for this floor")
-	lines.append("Backspace: return to lobby   R: research   M: map   PgUp/PgDn: start floor   F11: fullscreen   X or Ctrl+C: quit")
+	lines.append("Backspace: return to lobby   R: research   M: map   F11: fullscreen   X or Ctrl+C: quit")
 	_hud.text = "\n".join(lines)
 
 

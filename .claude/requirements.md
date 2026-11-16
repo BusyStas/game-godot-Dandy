@@ -272,3 +272,10 @@ Source: deck modified 2026-11-15 22:28 UTC. Supersedes the matching items in sec
 - **R-16.4 Corrupted look.** Models are now mutated, not just normal figures with goo: bodies are swallowed by black Sonium, with spikes on shoulders/back/hips, goo blotches, and red glowing eyes. Still blocky placeholders, not the deck's art.
 - **R-16.5 Minchei drag fix.** She now drops you in front of the target (in front of Surrena's wall hole), inside the playable bounds, instead of at its position (fixes falling out of the map, seen on floor 51).
 - **R-16.6 Not done.** "Maps need to look way better": the 24 maps are still plain themed boxes and need real art. Multiplayer rescue from Littay's tank.
+
+
+## 17. Floors must be done in sequence (hash chain)
+
+- **R-17.1** (Stas, 2026-11-15, after the game crashed on floor 1000): a run must go floor by floor. Every run starts at floor 1; reaching a floor appends a block to a **hash chain** (SHA-256 over the previous hash, floor, map, run id and time; `scripts/floor_chain.gd`). Floor N starts only if the chain holds exactly floors 1..N-1 with valid links, otherwise the run is cancelled and the error is logged. The best floor in the save carries a seal hash, so hand-editing it resets it to 0. The PageUp/PageDown "start floor" debug keys were removed.
+- **R-17.2** The check runs on the client, so it stops accidents and casual edits only. With multiplayer, the server must re-verify the same chain.
+- **R-17.3** The spawn-odds exponent is capped (floor 150) so absurd floors cannot overflow to infinity; the cause of the floor-1000 crash is unconfirmed (no log yet), so after the next crash commit `logs/<pc>/_log_errors.txt`.

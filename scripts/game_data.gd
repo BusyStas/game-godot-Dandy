@@ -208,14 +208,15 @@ static func pick_corruption(rng: RandomNumberGenerator, floor_number: int) -> St
 	var weights: Array = []
 	var total := 0.0
 	# deck: higher floors make rarer Corruptions more likely and common ones rarer, until Fatals spawn almost always
-	var boost := pow(1.07, maxf(0.0, float(floor_number) - 10.0))
+	var f_eff := minf(float(floor_number), 150.0)   # cap: pow() would overflow to infinity on huge floors
+	var boost := pow(1.07, maxf(0.0, f_eff - 10.0))
 	for k in CORRUPTIONS:
 		if floor_number >= int(CORRUPTIONS[k]["min_floor"]):
 			var w := float(CORRUPTIONS[k]["weight"])
 			if CORRUPTIONS[k]["cls"] != "friendler":
 				w *= boost
 			if CORRUPTIONS[k]["cls"] == "fatal":
-				w *= pow(1.12, maxf(0.0, float(floor_number) - 20.0))   # Fatals eventually spawn almost always
+				w *= pow(1.12, maxf(0.0, f_eff - 20.0))   # Fatals eventually spawn almost always
 			kinds.append(k)
 			weights.append(w)
 			total += w

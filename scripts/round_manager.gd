@@ -39,7 +39,9 @@ var machine_count := 3
 var container_count := 2
 var corruption_count := 1
 var slow_factor := 1.0   ## <1 once Rencha has seen the player on this floor
-var start_floor := 1     ## debug: the floor a new run starts on (PageUp/PageDown in the lobby)
+var chain: Array = []     ## FloorChain blocks of this run: floors must be reached one by one, in order
+var best_tip := ""        ## hash of the last block of the run that set best_floor
+var _chain_run_id := 0
 var health := MAX_HEALTH
 var minigame_active := false
 
@@ -116,7 +118,9 @@ func start_run() -> void:
 	if state != State.LOBBY:
 		return
 	_run_id += 1
-	floor_number = maxi(start_floor, 1)
+	floor_number = 1   # every run starts at floor 1 and goes floor by floor
+	chain = []
+	_chain_run_id = (randi() << 16) ^ int(Time.get_ticks_usec())
 	_clear_status()
 	health = MAX_HEALTH
 	health_changed.emit(health, MAX_HEALTH)
@@ -383,6 +387,7 @@ func kill_player(reason: String) -> void:
 		return
 	if floor_number > best_floor:
 		best_floor = floor_number
+		best_tip = str(chain[-1]["hash"]) if not chain.is_empty() else ""
 		_save()
 	player_died.emit("%s (floor %d, best %d)" % [reason, floor_number, best_floor])
 	reset()
@@ -432,6 +437,11 @@ func _enter_selection() -> void:
 
 func _begin_floor() -> void:
 	current_map = MapPicker.pick(floor_number)
+	if not FloorChain.append(chain, floor_number, current_map, _chain_run_id):
+		push_error("Floor sequence check failed at floor %d (chain length %d)" % [floor_number, chain.size()])
+		notice.emit("Floor sequence invalid - run cancelled.")
+		reset()
+		return
 	var th: Dictionary = GameData.theme(current_map)
 	task_kind = th["task"]
 	machine_count = clampi(3 + floori(floor_number / 8.0), 3, 6)
@@ -471,6 +481,7 @@ func _end_floor() -> void:
 		return
 	if floor_number > best_floor:
 		best_floor = floor_number
+		best_tip = str(chain[-1]["hash"]) if not chain.is_empty() else ""
 		_save()
 	_set_state(State.RESULTS)
 	floor_number += 1
@@ -500,6 +511,8 @@ func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("player", "sonium", sonium)
 	cfg.set_value("player", "best_floor", best_floor)
+	cfg.set_value("player", "best_tip", best_tip)
+	cfg.set_value("player", "best_seal", FloorChain.seal(best_floor, best_tip))
 	cfg.set_value("player", "starter_chosen", starter_chosen)
 	cfg.set_value("player", "owned_characters", owned["characters"])
 	cfg.set_value("player", "owned_skins", owned["skins"])
@@ -518,6 +531,11 @@ func _load() -> void:
 		return
 	sonium = int(cfg.get_value("player", "sonium", 0))
 	best_floor = int(cfg.get_value("player", "best_floor", 0))
+	best_tip = str(cfg.get_value("player", "best_tip", ""))
+	if best_floor > 0 and str(cfg.get_value("player", "best_seal", "")) != FloorChain.seal(best_floor, best_tip):
+		push_warning("best_floor in the save does not match its seal - reset to 0")
+		best_floor = 0
+		best_tip = ""
 	starter_chosen = bool(cfg.get_value("player", "starter_chosen", false))
 	owned["characters"] = Array(cfg.get_value("player", "owned_characters", []))
 	owned["skins"] = Array(cfg.get_value("player", "owned_skins", ["default"]))
