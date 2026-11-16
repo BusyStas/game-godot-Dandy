@@ -1,12 +1,15 @@
 extends CanvasLayer
 ## Top-right corner minimap: a second camera looks straight down at the player (north is up)
 ## and renders the real geometry plus the icons on visual layer 3 (you, monsters, machines,
-## containers, the elevator). Shown in the lobby and on floors, hidden inside the cabin.
+## containers, the elevator). Only exists in the lobby and on floors (never inside the cabin).
+## M cycles: hidden -> small -> twice as big -> hidden -> ...
 
 const BOX := 232            ## outer size in UI pixels
 const VIEW_METRES := 44.0   ## how much world the map shows
 const HEIGHT := 40.0
 
+var _mode := 0              ## 0 hidden, 1 small, 2 big (twice the size)
+var _frame: Panel
 var _vp: SubViewport
 var _cam: Camera3D
 var _player: Node3D
@@ -15,6 +18,7 @@ var _player: Node3D
 func _ready() -> void:
 	layer = 2
 	var frame := Panel.new()
+	_frame = frame
 	frame.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	frame.offset_left = -BOX - 16
 	frame.offset_right = -16
@@ -58,10 +62,19 @@ func _ready() -> void:
 	frame.add_child(tag)
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		_mode = (_mode + 1) % 3
+		var size := BOX * (2 if _mode == 2 else 1)
+		_frame.offset_left = -size - 16
+		_frame.offset_bottom = 16 + size
+		get_viewport().set_input_as_handled()
+
+
 func _process(_delta: float) -> void:
 	var s: int = RoundManager.state
-	var show_map: bool = s == RoundManager.State.LOBBY or s == RoundManager.State.FLOOR \
-		or s == RoundManager.State.PANIC or s == RoundManager.State.RETURN_TO_ELEVATOR
+	var show_map: bool = _mode > 0 and (s == RoundManager.State.LOBBY or s == RoundManager.State.FLOOR \
+		or s == RoundManager.State.PANIC or s == RoundManager.State.RETURN_TO_ELEVATOR)
 	visible = show_map
 	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if show_map else SubViewport.UPDATE_DISABLED
 	if not show_map:

@@ -33,6 +33,7 @@ Keep the `*.gd.uid` files committed next to their scripts.
 
 ## Display, minimap and warnings
 - The game starts fullscreen (borderless); **F11** toggles windowed/fullscreen. The UI scales with the window.
+- **M** cycles the minimap: hidden (start), small, twice as big, hidden, ...
 - **Minimap** (top-right): a top-down camera over the real level, north up. White disc with a yellow nose = you, red = monsters (hidden Surrena only once it bursts out), yellow squares = machines, blue squares = containers, green square = the elevator. Hidden inside the cabin.
 - **Monster warning**: a flashing red screen glow, "!! WARNING !!" banner and a siren beep when a monster comes into view (re-armed after 15 s out of sight) or when Surrena bursts from a wall.
 

@@ -346,7 +346,7 @@ func _refresh_hud() -> void:
 			lines.append("RUN BACK TO THE ELEVATOR! %d s left" % ceili(RoundManager.time_left()))
 	if RoundManager.slow_factor < 1.0:
 		lines.append("Slowed by Rencha for this floor")
-	lines.append("Backspace: return to lobby   R: research   PgUp/PgDn: start floor   F11: fullscreen   X or Ctrl+C: quit")
+	lines.append("Backspace: return to lobby   R: research   M: map   PgUp/PgDn: start floor   F11: fullscreen   X or Ctrl+C: quit")
 	_hud.text = "\n".join(lines)
 
 
