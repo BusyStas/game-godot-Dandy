@@ -146,6 +146,7 @@ func _update_mirror(s: int) -> void:
 		var skin: String = str(RoundManager.loadout.get("skin", ""))
 		if GameData.SKINS.has(skin):
 			_mirror.skin_color = GameData.SKINS[skin]["color"]
+			_mirror.character = str(GameData.CHARACTERS.get(RoundManager.loadout["character"], {}).get("model", ""))
 	_mirror.active = in_cabin
 
 
@@ -308,7 +309,7 @@ func _refresh_hud() -> void:
 	if Time.get_ticks_msec() > _msg_until_ms:
 		_msg.text = ""
 	var s: int = RoundManager.state
-	var ch: Dictionary = GameData.CHARACTERS.get(RoundManager.loadout["character"], GameData.CHARACTERS["recruit"])
+	var ch: Dictionary = GameData.CHARACTERS.get(RoundManager.loadout["character"], GameData.CHARACTERS[GameData.STARTERS[0]])
 	var skin: Dictionary = GameData.SKINS.get(RoundManager.loadout["skin"], GameData.SKINS["default"])
 	var deco: Dictionary = GameData.DECORATIONS.get(RoundManager.loadout["decoration"], GameData.DECORATIONS["none"])
 	var util: Dictionary = GameData.UTILITIES.get(RoundManager.loadout["utility"], GameData.UTILITIES["none"])
@@ -320,7 +321,7 @@ func _refresh_hud() -> void:
 		"State: %s" % RoundManager.State.keys()[s],
 	]
 	if s != RoundManager.State.LOBBY:
-		lines.append("Floor: %d" % RoundManager.floor_number)
+		lines.append("Floor: %d   Stamina: %d%%" % [RoundManager.floor_number, int(100.0 * _player.stamina / maxf(_player.sprint_max, 0.01))])
 	if RoundManager.current_map != "":
 		lines.append("Map: %s" % RoundManager.current_map)
 		lines.append(_task_line())

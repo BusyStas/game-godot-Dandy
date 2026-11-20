@@ -40,6 +40,8 @@ var container_count := 2
 var corruption_count := 1
 var slow_factor := 1.0   ## <1 once Rencha has seen the player on this floor
 var chain: Array = []     ## FloorChain blocks of this run: floors must be reached one by one, in order
+## Admins (Daniel and his father) get the Fatals unlocked: run with --admin, set SONIA_ADMIN=1, or put an admin.txt file in the project folder.
+var is_admin := false
 var best_tip := ""        ## hash of the last block of the run that set best_floor
 var _chain_run_id := 0
 var health := MAX_HEALTH
@@ -66,7 +68,7 @@ var sonium := 0
 var best_floor := 0
 var starter_chosen := false
 var owned := {"characters": [], "skins": ["default"], "decorations": ["none"]}
-var loadout := {"character": "recruit", "skin": "default", "utility": "none", "decoration": "none"}
+var loadout := {"character": "ghouliean", "skin": "default", "utility": "none", "decoration": "none"}
 
 var _timer: SceneTreeTimer
 var _run_id := 0
@@ -74,6 +76,8 @@ var _spotted := {}
 
 
 func _ready() -> void:
+	is_admin = "--admin" in OS.get_cmdline_user_args() or "--admin" in OS.get_cmdline_args() \
+		or OS.get_environment("SONIA_ADMIN") == "1" or FileAccess.file_exists("res://admin.txt")
 	for k in GameData.RESEARCH:
 		research[k] = {"p": [0.0, 0.0, 0.0, 0.0], "claimed": false}
 	_load()
@@ -542,6 +546,16 @@ func _load() -> void:
 	owned["decorations"] = Array(cfg.get_value("player", "owned_decorations", ["none"]))
 	for k in loadout:
 		loadout[k] = str(cfg.get_value("loadout", k, loadout[k]))
+	# the roster changed with the deck (stars, story characters): drop saved characters that no longer exist
+	var kept: Array = []
+	for id in owned["characters"]:
+		if GameData.CHARACTERS.has(id) and (is_admin or not GameData.CHARACTERS[id].get("admin", false)):
+			kept.append(id)
+	owned["characters"] = kept
+	if kept.is_empty():
+		starter_chosen = false
+	elif not GameData.CHARACTERS.has(loadout["character"]) or (GameData.CHARACTERS[loadout["character"]].get("admin", false) and not is_admin):
+		loadout["character"] = kept[0]
 	for k in research:
 		var p: Array = Array(cfg.get_value("research", k, research[k]["p"]))
 		if p.size() == 4:

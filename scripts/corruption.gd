@@ -25,6 +25,7 @@ var _revealed := true
 var _home := Vector3.ZERO
 var _stun_until := 0.0
 var _boost_until := 0.0
+var _ghoul_close_cd := 0.0
 var _hit_cd := 0.0
 var _sight_timer := 0.0
 var _last_seen := -100.0
@@ -264,6 +265,10 @@ func _physics_process(delta: float) -> void:
 				var r := _limlem(dist, now)
 				target = r[0]
 				speed = r[1]
+			"ghouliean":
+				var r := _ghouliean(dist, now)
+				target = r[0]
+				speed = r[1]
 			"littay":
 				var r := _minchei(dist, now)   # same roaming/hearing style as Minchei
 				target = r[0]
@@ -288,6 +293,8 @@ func _physics_process(delta: float) -> void:
 
 func _contact() -> void:
 	var dmg: int = int(_stats["damage"])
+	if dmg <= 0:
+		return   # harmless Friendlers (Ghouliean) never attack
 	if kind == "surrena":
 		if not _grabbing and RoundManager.request_minigame("shake", self, {}):
 			_grabbing = true
@@ -572,6 +579,25 @@ func _limlem(dist: float, now: float) -> Array:
 	if now < _chase_until and from_home < 7.0:
 		return [_player.global_position, float(_stats["speed"])]
 	return [_home, 3.0]
+
+
+## Ghouliean is a wimp: he bolts from anyone who gets close, and wanders when nobody is near.
+func _ghouliean(dist: float, now: float) -> Array:
+	if dist < float(_stats["sight"]) * 0.75:
+		if dist < 3.0 and now > _ghoul_close_cd:
+			_ghoul_close_cd = now + 6.0
+			RoundManager.research_event(kind, "close")
+		var away := global_position - _player.global_position
+		away.y = 0.0
+		var spot := global_position + away.normalized() * 6.0
+		var b: Rect2 = bounds
+		spot.x = clampf(spot.x, b.position.x + 1.0, b.end.x - 1.0)
+		spot.z = clampf(spot.z, b.position.y + 1.0, b.end.y - 1.0)
+		if Vector2(spot.x - global_position.x, spot.z - global_position.z).length() < 1.5:
+			_pick_wander()   # cornered: dash somewhere else
+			return [_wander_target(), float(_stats["speed"])]
+		return [spot, float(_stats["speed"])]
+	return [_wander_target(), 1.8]
 
 
 ## Minchei is blind: she roams, feels for noise and anything close, and drags it to the other Corruptions.

@@ -3,16 +3,52 @@ extends RefCounted
 ## Static game content. Anything marked PLACEHOLDER was not specified in the design deck.
 
 # PLACEHOLDER: the deck says there are two starting characters (designs TBD) and a character shop.
-const STARTERS := ["recruit", "scout"]
+const STARTERS := ["ghouliean", "dreina"]   # pick one for free the first time you play
 
+# Playable characters are the story characters themselves (deck: "bought characters are the characters you play as").
+# Five star stats, 1 (worst) to 5 (best): Timing Size, Movement Speed, Stamina, Stealth, Machine Speed. The deck gives
+# Sonia, Bolten, Littay, Shovelina, Lim & Lem and Dreina; the rest are PLACEHOLDER stars. Price runs from about 500 (worst
+# total) to 4000 (best total). Sonia, Serrani and Surrena are admin-only (unlocked by RoundManager.is_admin, never sold).
 const CHARACTERS := {
-	# deck: bought characters cost about 500 (worst) to 4000 (best) Sonium; stars run 1 (worst) to 5 (best).
-	# Sonia, Serrani and Surrena are admin-only and never sold. The roster here is a PLACEHOLDER until Daniel lists the real ones.
-	"recruit": {"name": "Recruit", "price": 500, "desc": "Balanced all-rounder.", "speed": 1.0, "fix": 1.0, "quiet": 1.0, "stars": {"Speed": 2, "Fixing": 2, "Stealth": 2}},
-	"scout": {"name": "Scout", "price": 500, "desc": "Runs 15% faster.", "speed": 1.15, "fix": 1.0, "quiet": 1.0, "stars": {"Speed": 3, "Fixing": 1, "Stealth": 2}},
-	"engineer": {"name": "Engineer", "price": 1500, "desc": "Fixes machines 30% faster.", "speed": 1.0, "fix": 1.3, "quiet": 1.0, "stars": {"Speed": 2, "Fixing": 4, "Stealth": 2}},
-	"ghost": {"name": "Ghost", "price": 4000, "desc": "Makes half the noise.", "speed": 1.0, "fix": 1.0, "quiet": 0.5, "stars": {"Speed": 3, "Fixing": 2, "Stealth": 5}},
+	"ghouliean": {"name": "Ghouliean", "price": 600, "desc": "A wimpy prankster ghost.", "stars": {"Timing Size": 1, "Movement Speed": 3, "Stamina": 2, "Stealth": 1, "Machine Speed": 1}, "model": "ghouliean"},
+	"rencha": {"name": "Rencha", "price": 1000, "desc": "Stalks the halls.", "stars": {"Timing Size": 2, "Movement Speed": 2, "Stamina": 3, "Stealth": 2, "Machine Speed": 2}, "model": "rencha"},
+	"minchei": {"name": "Minchei", "price": 1000, "desc": "Blind but strong.", "stars": {"Timing Size": 3, "Movement Speed": 2, "Stamina": 2, "Stealth": 1, "Machine Speed": 2}, "model": "minchei"},
+	"cybot": {"name": "Cybot 1.2.7", "price": 1700, "desc": "Great with machines.", "stars": {"Timing Size": 2, "Movement Speed": 2, "Stamina": 3, "Stealth": 2, "Machine Speed": 5}, "model": "cybot"},
+	"ivina": {"name": "Ivina", "price": 1700, "desc": "Quiet and careful.", "stars": {"Timing Size": 3, "Movement Speed": 2, "Stamina": 2, "Stealth": 5, "Machine Speed": 2}, "model": "ivina"},
+	"shovelina": {"name": "Shovelina", "price": 2250, "desc": "Big timing windows.", "stars": {"Timing Size": 4, "Movement Speed": 3, "Stamina": 3, "Stealth": 2, "Machine Speed": 3}, "model": "shovelina"},
+	"littay": {"name": "Littay", "price": 2250, "desc": "A good machine hand.", "stars": {"Timing Size": 2, "Movement Speed": 3, "Stamina": 4, "Stealth": 2, "Machine Speed": 4}, "model": "littay"},
+	"dreina": {"name": "Dreina", "price": 2250, "desc": "Fast and enduring.", "stars": {"Timing Size": 2, "Movement Speed": 4, "Stamina": 4, "Stealth": 3, "Machine Speed": 2}, "model": "dreina"},
+	"limlem": {"name": "Lim & Lem", "price": 2250, "desc": "Fast fixers, no stamina.", "stars": {"Timing Size": 1, "Movement Speed": 5, "Stamina": 1, "Stealth": 3, "Machine Speed": 5}, "model": "limlem"},
+	"bolten": {"name": "Bolten", "price": 2600, "desc": "Lightning fast, very loud.", "stars": {"Timing Size": 2, "Movement Speed": 5, "Stamina": 5, "Stealth": 1, "Machine Speed": 2}, "model": "bolten"},
+	"sonia": {"name": "Sonia", "price": 4000, "desc": "Admin only. Best at everything.", "stars": {"Timing Size": 5, "Movement Speed": 5, "Stamina": 5, "Stealth": 5, "Machine Speed": 5}, "model": "sonia", "admin": true},
+	"serrani": {"name": "Serrani", "price": 4000, "desc": "Admin only.", "stars": {"Timing Size": 3, "Movement Speed": 3, "Stamina": 5, "Stealth": 1, "Machine Speed": 3}, "model": "serrani", "admin": true},
+	"surrena": {"name": "Surrena", "price": 4000, "desc": "Admin only.", "stars": {"Timing Size": 3, "Movement Speed": 4, "Stamina": 3, "Stealth": 5, "Machine Speed": 2}, "model": "surrena", "admin": true},
 }
+
+
+## Gameplay numbers from a character's stars (3 stars is about the old "average").
+static func stat(info: Dictionary, stat_name: String) -> int:
+	return int(info.get("stars", {}).get(stat_name, 3))
+
+
+static func speed_mult(info: Dictionary) -> float:
+	return 0.8 + 0.1 * stat(info, "Movement Speed")      # 0.9 .. 1.3
+
+
+static func fix_mult(info: Dictionary) -> float:
+	return 0.7 + 0.15 * stat(info, "Machine Speed")      # 0.85 .. 1.45
+
+
+static func quiet_mult(info: Dictionary) -> float:
+	return 1.5 - 0.25 * stat(info, "Stealth")           # 1.25 .. 0.25 (noise radius multiplier)
+
+
+static func sprint_seconds(info: Dictionary) -> float:
+	return 2.0 + 2.0 * stat(info, "Stamina")             # 4 .. 12 s of sprint, refills while walking
+
+
+static func timing_zone_px(info: Dictionary) -> float:
+	return 60.0 + 30.0 * stat(info, "Timing Size")       # width of the green zone (of 600)
 
 ## "Balanced all-rounder.  Speed ★★☆☆☆  Fixing ..." for the shop and the selection screen.
 static func desc_with_stars(info: Dictionary) -> String:
@@ -89,6 +125,7 @@ const CORRUPTIONS := {
 	"dreina": {"name": "Dreina", "cls": "friendler", "speed": 3.5, "sight": 12.0, "hearing": 10.0, "detect_time": 10.0, "damage": 1, "min_floor": 5, "weight": 2.5},
 	"shovelina": {"name": "Shovelina", "cls": "friendler", "speed": 2.8, "sight": 10.0, "hearing": 12.0, "detect_time": 6.0, "damage": 1, "min_floor": 5, "weight": 2.5},
 	"limlem": {"name": "Lim & Lem", "cls": "friendler", "speed": 6.0, "sight": 12.0, "hearing": 6.0, "detect_time": 0.0, "damage": 1, "min_floor": 5, "weight": 2.5},
+	"ghouliean": {"name": "Ghouliean", "cls": "friendler", "speed": 4.4, "sight": 12.0, "hearing": 10.0, "detect_time": 0.0, "damage": 0, "min_floor": 5, "weight": 2.5},
 	"littay": {"name": "Littay", "cls": "friendler", "speed": 3.0, "sight": 12.0, "hearing": 10.0, "detect_time": 10.0, "damage": 1, "min_floor": 10, "weight": 2.5},
 	"minchei": {"name": "Minchei", "cls": "friendler", "speed": 2.6, "sight": 4.0, "hearing": 14.0, "detect_time": 12.0, "damage": 1, "min_floor": 5, "weight": 2.5},
 }
@@ -96,14 +133,14 @@ const CORRUPTIONS := {
 # The deck's table still has unfinished ("WIP") rows. They keep their share of the odds; until they exist, a WIP
 # roll spawns one of the finished Friendlers (any floor) as a stand-in. [min_floor, rarity]
 static func wip_rows() -> Array:
-	var rows: Array = [[5, 2.5], [5, 2.5]]
+	var rows: Array = [[5, 2.5]]
 	for i in 8:
 		rows.append([0, 3.5])
 	for i in 10:
 		rows.append([0, 4.55])
 	return rows
 
-const WIP_STAND_INS := ["dreina", "shovelina", "limlem", "minchei", "littay"]
+const WIP_STAND_INS := ["dreina", "shovelina", "limlem", "minchei", "littay", "ghouliean"]
 
 # Short alarm text shown by the monster warning.
 const WARNINGS := {
@@ -117,6 +154,7 @@ const WARNINGS := {
 	"dreina": "DREINA is chasing you - avoid the Sonium puddles!",
 	"shovelina": "SHOVELINA is digging toward you - keep moving!",
 	"limlem": "LIM & LEM - do not get close to them!",
+	"ghouliean": "Ghouliean is around - he is harmless and runs from you.",
 	"littay": "LITTAY is roaming - he drags people to the darkest part of the map!",
 	"minchei": "MINCHEI is roaming - she can drag you to a Fatal!",
 }
@@ -179,6 +217,12 @@ const RESEARCH := {
 		{"ev": "space_escape", "goal": 3, "text": "Step into Lim & Lem's space and get away unhurt three times"},
 		{"ev": "chased", "goal": 30, "text": "Get chased by Corrupted Lim & Lem for half a minute"}],
 		"cost_jars": 0, "reward": "title", "reward_text": "Title: Personal Space + a guide on keeping your distance"},
+	"ghouliean": {"tasks": [
+		{"ev": "found", "goal": 10, "text": "Find Corrupted Ghouliean ten times"},
+		{"ev": "follow", "goal": 30, "text": "Stay near Corrupted Ghouliean for half a minute (within 5 m)"},
+		{"ev": "close", "goal": 5, "text": "Get within 3 m of Ghouliean five times before he bolts"},
+		{"ev": "found", "goal": 25, "text": "Find Corrupted Ghouliean twenty-five times"}],
+		"cost_jars": 0, "reward": "title", "reward_text": "Title: Ghoul Whisperer + a guide to the Ghouliean Protocol"},
 	"littay": {"tasks": [
 		{"ev": "found", "goal": 10, "text": "Find Corrupted Littay ten times"},
 		{"ev": "follow", "goal": 30, "text": "Follow Corrupted Littay for half a minute (within 5 m)"},

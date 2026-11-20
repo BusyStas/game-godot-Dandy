@@ -24,6 +24,11 @@ var skin_color := Color(0.8, 0.8, 0.8):
 
 var _vp: SubViewport
 var _cam: Camera3D
+var character := "":      ## the chosen character: its body shows in the mirror ("your body's looks change")
+	set(value):
+		character = value
+		if is_inside_tree():
+			_rebuild_figure()
 var _figure: Node3D
 
 
@@ -60,7 +65,7 @@ func _ready() -> void:
 func _rebuild_figure() -> void:
 	if _figure:
 		_figure.queue_free()
-	_figure = CharacterModel.build_player(skin_color)
+	_figure = CharacterModel.build_normal(character) if character != "" else CharacterModel.build_player(skin_color)
 	CharacterModel.set_visual_layers(_figure, FIGURE_LAYER)
 	_figure.top_level = true
 	_figure.visible = active

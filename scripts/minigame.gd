@@ -81,8 +81,9 @@ func _ready() -> void:
 	_track.add_child(tbg)
 	_zone = ColorRect.new()
 	_zone.color = Color(0.1, 0.8, 0.2, 0.9)
-	_zone.position = Vector2(240, 0)
-	_zone.size = Vector2(120, 34)
+	var zone_w := GameData.timing_zone_px(GameData.CHARACTERS.get(RoundManager.loadout["character"], {}))   # Timing Size stars
+	_zone.position = Vector2(300.0 - zone_w / 2.0, 0)
+	_zone.size = Vector2(zone_w, 34)
 	_track.add_child(_zone)
 	_needle = ColorRect.new()
 	_needle.color = Color.WHITE

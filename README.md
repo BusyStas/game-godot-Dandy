@@ -45,3 +45,6 @@ Keep the `*.gd.uid` files committed next to their scripts.
 - **Research**: press **R** in the lobby; claim rewards after four tasks per Corruption.
 - By the deck's spawn table only Friendlers appear before floor 10. Runs always start at floor 1 and go floor by floor; each floor adds a block to a hash chain (`scripts/floor_chain.gd`) and a floor can only start if every earlier floor of the run verifies, so you cannot skip ahead. Stalks appear from floor 10, Fatals from floor 20.
 - New scripts: `hazard.gd` (puddles, plants), `medkit.gd`, `minigame.gd`, `research_ui.gd`, `status_hud.gd`.
+
+## Characters, stars and admin mode
+Every playable character has five stars (Timing Size, Movement Speed, Stamina, Stealth, Machine Speed) that change how the game plays; stamina limits sprinting (see the HUD). Sonia, Serrani and Surrena are admin-only: start the game with `--admin`, set `SONIA_ADMIN=1`, or create an `admin.txt` file next to `project.godot` (it is gitignored). Ghouliean is a new harmless Friendler that runs away from you.

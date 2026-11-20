@@ -8,6 +8,9 @@ const MOUSE_SENS := 0.0025
 const GRAVITY := 20.0
 
 var frozen := false          ## true while a UI screen is open
+var sprint_max := 6.0         ## seconds of sprint (Stamina stat)
+var stamina := 6.0
+var timing_zone := 120.0      ## green-zone width in timing minigames (Timing Size stat)
 var fix_speed := 1.0         ## machine repair speed multiplier (character perk)
 
 var _speed_mult := 1.0
@@ -56,10 +59,13 @@ func camera() -> Camera3D:
 
 
 func apply_loadout() -> void:
-	var ch: Dictionary = GameData.CHARACTERS.get(RoundManager.loadout["character"], GameData.CHARACTERS["recruit"])
-	_speed_mult = ch["speed"]
-	fix_speed = ch["fix"]
-	_quiet = ch["quiet"]
+	var ch: Dictionary = GameData.CHARACTERS.get(RoundManager.loadout["character"], GameData.CHARACTERS[GameData.STARTERS[0]])
+	_speed_mult = GameData.speed_mult(ch)
+	fix_speed = GameData.fix_mult(ch)
+	_quiet = GameData.quiet_mult(ch)
+	sprint_max = GameData.sprint_seconds(ch)
+	stamina = sprint_max
+	timing_zone = GameData.timing_zone_px(ch)
 	var utility: String = RoundManager.loadout["utility"]
 	if utility == "boots":
 		_speed_mult *= 1.2
@@ -101,7 +107,11 @@ func _physics_process(delta: float) -> void:
 		if Input.is_physical_key_pressed(KEY_A): x -= 1.0
 		if Input.is_physical_key_pressed(KEY_S): z += 1.0
 		if Input.is_physical_key_pressed(KEY_W): z -= 1.0
-		sprint = Input.is_physical_key_pressed(KEY_SHIFT)
+		sprint = Input.is_physical_key_pressed(KEY_SHIFT) and stamina > 0.0 and (x != 0.0 or z != 0.0)
+	if sprint:
+		stamina = maxf(0.0, stamina - delta)
+	else:
+		stamina = minf(sprint_max, stamina + delta * 0.6)
 	var dir := (transform.basis * Vector3(x, 0.0, z)).normalized()
 	var speed := BASE_SPEED * _speed_mult * RoundManager.speed_factor() * (SPRINT_MULT if sprint else 1.0)
 	velocity.x = dir.x * speed

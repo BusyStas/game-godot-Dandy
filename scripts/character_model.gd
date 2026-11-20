@@ -22,6 +22,7 @@ const HEAD_SPEC := {
 	"limlem": [0.0022, 230, 100, 0.0],
 	"minchei": [0.0024, 210, 115, 0.0],
 	"littay": [0.0024, 215, 110, 0.0],
+	"ghouliean": [0.0024, 215, 110, 0.0],
 }
 
 # kind -> pixel positions (column, row) of the two eyes in the head texture, used for the red Corruption glow
@@ -40,6 +41,7 @@ const EYES := {
 	"limlem": [Vector2(65, 130), Vector2(135, 130)],
 	"minchei": [Vector2(85, 110), Vector2(150, 110)],
 	"littay": [Vector2(80, 105), Vector2(140, 105)],
+	"ghouliean": [Vector2(82, 100), Vector2(138, 100)],
 }
 
 # body styles: torso, stripes (or null), belt, pants, arm, cuff, arm stripe, extra
@@ -54,6 +56,7 @@ const BODY_STYLES := {
 	"lem": {"torso": Color(0.5, 0.37, 0.0), "stripe": null, "belt": Color(0.93, 0.93, 0.93), "pants": Color(0.03, 0.2, 0.4), "arm": Color(0.5, 0.37, 0.0), "cuff": Color(0.4, 0.65, 0.3), "arm_stripe": false},
 	"littay": {"torso": Color(0.35, 0.35, 0.35), "stripe": null, "belt": null, "pants": Color(0.25, 0.45, 0.85), "arm": Color(0.9, 0.55, 0.2), "cuff": Color(0.9, 0.55, 0.2), "arm_stripe": false},
 	"minchei": {"torso": Color(0.75, 0.45, 0.6), "stripe": null, "belt": null, "pants": Color(0.72, 0.85, 0.7), "arm": Color(0.55, 0.5, 0.75), "cuff": Color(0.55, 0.5, 0.75), "arm_stripe": false},
+	"ghouliean": {"torso": Color(0.9, 0.93, 0.97), "stripe": null, "belt": null, "pants": Color(0.82, 0.86, 0.93), "arm": Color(0.9, 0.93, 0.97), "cuff": Color(0.7, 0.78, 0.9), "arm_stripe": false},
 	"bolten": {"torso": Color(0.8, 0.02, 0.02), "stripe": Color.BLACK, "belt": Color.BLACK, "pants": Color(0.8, 0.02, 0.02), "arm": Color(0.8, 0.02, 0.02), "cuff": Color(1.0, 0.9, 0.1), "arm_stripe": false},
 }
 
@@ -65,6 +68,25 @@ static func style_of(kind: String) -> String:
 		"sonia", "serrani", "surrena":
 			return "fatal"
 	return kind
+
+
+## A character as shown in the lobby mirror and shop: the same body and painted head, but not Corrupted.
+static func build_normal(kind: String) -> Node3D:
+	var root := Node3D.new()
+	if kind == "limlem":
+		for pair in [["lim", -0.36], ["lem", 0.36]]:
+			var one := Node3D.new()
+			one.scale = Vector3(0.82, 0.82, 0.82)
+			one.position.x = pair[1]
+			_body(one, pair[0])
+			_head(one, pair[0])
+			root.add_child(one)
+		return root
+	if not HEAD_SPEC.has(kind):
+		return build_player(Color(0.9, 0.75, 0.6))
+	_body(root, style_of(kind))
+	_head(root, kind)
+	return root
 
 
 ## An enemy: body + head, then black Sonium goo and red glowing eyes ("Corrupted").
@@ -278,6 +300,8 @@ static func _texture(kind: String) -> ImageTexture:
 			img = _draw_minchei()
 		"littay":
 			img = _draw_littay()
+		"ghouliean":
+			img = _draw_ghouliean()
 		_:
 			img = _draw_rencha()
 	img.generate_mipmaps()
@@ -500,6 +524,18 @@ static func _draw_minchei() -> Image:
 	_eye(img, 85, 110, 22, 22)
 	_eye(img, 150, 110, 22, 22)
 	_poly(img, PackedVector2Array([Vector2(75, 160), Vector2(160, 158), Vector2(135, 195), Vector2(100, 195)]), Color.BLACK)
+	return img
+
+
+## Ghouliean: a wimpy little ghost with a wavy hem, big worried eyes and a small wobbly mouth.
+static func _draw_ghouliean() -> Image:
+	var img := _new(220, 230)
+	_ellipse(img, 110, 100, 78, 84, Color(0.93, 0.95, 1.0))
+	_poly(img, PackedVector2Array([Vector2(32, 100), Vector2(188, 100), Vector2(190, 205), Vector2(160, 185), Vector2(135, 210),
+			Vector2(110, 185), Vector2(85, 210), Vector2(60, 185), Vector2(30, 205)]), Color(0.93, 0.95, 1.0))
+	_eye(img, 82, 100, 20, 24)
+	_eye(img, 138, 100, 20, 24)
+	_poly(img, PackedVector2Array([Vector2(90, 150), Vector2(112, 140), Vector2(132, 150), Vector2(112, 160)]), Color(0.25, 0.25, 0.35))
 	return img
 
 

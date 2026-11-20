@@ -279,3 +279,12 @@ Source: deck modified 2026-11-15 22:28 UTC. Supersedes the matching items in sec
 - **R-17.1** (Stas, 2026-11-15, after the game crashed on floor 1000): a run must go floor by floor. Every run starts at floor 1; reaching a floor appends a block to a **hash chain** (SHA-256 over the previous hash, floor, map, run id and time; `scripts/floor_chain.gd`). Floor N starts only if the chain holds exactly floors 1..N-1 with valid links, otherwise the run is cancelled and the error is logged. The best floor in the save carries a seal hash, so hand-editing it resets it to 0. The PageUp/PageDown "start floor" debug keys were removed.
 - **R-17.2** The check runs on the client, so it stops accidents and casual edits only. With multiplayer, the server must re-verify the same chain.
 - **R-17.3** The spawn-odds exponent is capped (floor 150) so absurd floors cannot overflow to infinity; the cause of the floor-1000 crash is unconfirmed (no log yet), so after the next crash commit `logs/<pc>/_log_errors.txt`.
+
+## 18. Deck update 5 (deck re-read 2026-11-19, 39 slides)
+- Playable characters are the story characters. Each has five stars (1-5): Timing Size, Movement Speed, Stamina, Stealth, Machine Speed. Deck gives Sonia, Bolten, Littay, Shovelina, Lim & Lem, Dreina; the others are PLACEHOLDER stars. Prices 600-2600 in the shop (placeholder).
+- Stars drive gameplay (`GameData.speed_mult/fix_mult/quiet_mult/sprint_seconds/timing_zone_px`): walk/sprint speed, machine fix speed, noise radius, sprint stamina (drains while sprinting, refills 0.6x while not; shown in the HUD), and green-zone width in the timing minigame.
+- Free starters (pick one on first play): Ghouliean or Dreina (placeholder). Old saves are migrated: removed character ids are dropped and the starter pick is shown again.
+- Admin unlock: Sonia, Serrani and Surrena are never sold; they are selectable when `RoundManager.is_admin` (launch with `--admin`, env `SONIA_ADMIN=1`, or an `admin.txt` file in the project folder, which is gitignored).
+- New Friendler Ghouliean: harmless (damage 0), flees from anyone within about 9 m, appears from floor 5 (replaces a WIP row), has Corrupted art and placeholder research tasks.
+- The lobby mirror shows the selected character's body and head.
+- NOT implemented: lore relationships as targeting (e.g. Sonia hitting certain friends harder), multiplayer, better map art.

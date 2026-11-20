@@ -55,7 +55,12 @@ func _ready() -> void:
 
 
 func open() -> void:
-	_fill("character", RoundManager.owned["characters"], GameData.CHARACTERS)
+	var chars: Array = RoundManager.owned["characters"].duplicate()
+	if RoundManager.is_admin:   # admins get the Fatals (Sonia, Serrani, Surrena) for free
+		for id in GameData.CHARACTERS:
+			if GameData.CHARACTERS[id].get("admin", false) and not chars.has(id):
+				chars.append(id)
+	_fill("character", chars, GameData.CHARACTERS)
 	_fill("skin", RoundManager.owned["skins"], GameData.SKINS)
 	_fill("utility", GameData.UTILITIES.keys(), GameData.UTILITIES)
 	_fill("decoration", RoundManager.owned["decorations"], GameData.DECORATIONS)
